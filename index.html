@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SafeConnect App</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <h1>SafeConnect</h1>
+      <p>Your lightweight personal safety and check-in companion.</p>
+    </header>
+
+    <main class="grid">
+      <section class="card" aria-labelledby="contact-title">
+        <h2 id="contact-title">Trusted Contacts</h2>
+        <form id="contact-form" class="stack">
+          <label for="name">Name</label>
+          <input id="name" type="text" required maxlength="40" />
+
+          <label for="relationship">Relationship</label>
+          <input id="relationship" type="text" required maxlength="30" />
+
+          <label for="phone">Phone</label>
+          <input id="phone" type="tel" required pattern="[0-9+\-()\s]{7,}" />
+
+          <button type="submit">Add Contact</button>
+        </form>
+        <ul id="contact-list" class="contact-list" aria-live="polite"></ul>
+      </section>
+
+      <section class="card" aria-labelledby="checkin-title">
+        <h2 id="checkin-title">Safety Check-In</h2>
+        <label for="duration">Check-in duration (minutes)</label>
+        <input id="duration" type="number" min="1" max="180" value="10" />
+        <div class="actions">
+          <button id="start-checkin" type="button">Start Timer</button>
+          <button id="cancel-checkin" class="ghost" type="button">Cancel</button>
+        </div>
+        <p id="timer-status" class="status" role="status" aria-live="polite">No active check-in.</p>
+      </section>
+
+      <section class="card" aria-labelledby="sos-title">
+        <h2 id="sos-title">SOS Assistant</h2>
+        <label for="location">Current location</label>
+        <input id="location" type="text" placeholder="e.g., 123 Main St" />
+
+        <label for="notes">Notes</label>
+        <textarea id="notes" rows="3" placeholder="Describe your situation"></textarea>
+
+        <div class="actions">
+          <button id="build-message" type="button">Generate SOS Message</button>
+          <button id="copy-message" class="ghost" type="button">Copy Message</button>
+        </div>
+
+        <label for="message">Generated message</label>
+        <textarea id="message" rows="6" readonly></textarea>
+      </section>
+    </main>
+
+    <footer>
+      <small>SafeConnect is an educational demo. Always call emergency services in urgent danger.</small>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>

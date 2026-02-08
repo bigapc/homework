@@ -1,0 +1,142 @@
+:root {
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #102a43;
+  background: #f0f4f8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+.hero {
+  background: linear-gradient(135deg, #2f80ed, #56ccf2);
+  color: white;
+  text-align: center;
+  padding: 2.5rem 1rem;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3rem);
+}
+
+.hero p {
+  margin-top: 0.75rem;
+  font-size: 1.05rem;
+}
+
+.grid {
+  width: min(1100px, 92vw);
+  margin: 1.5rem auto;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.card {
+  background: white;
+  border-radius: 14px;
+  padding: 1rem;
+  box-shadow: 0 8px 20px rgba(16, 42, 67, 0.12);
+}
+
+.stack {
+  display: grid;
+  gap: 0.7rem;
+}
+
+label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 600;
+}
+
+input,
+textarea,
+button {
+  font: inherit;
+}
+
+input,
+textarea {
+  border: 1px solid #bcccdc;
+  border-radius: 8px;
+  padding: 0.55rem;
+}
+
+textarea {
+  resize: vertical;
+}
+
+button {
+  border: none;
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  color: white;
+  background: #2f80ed;
+  cursor: pointer;
+}
+
+button:hover {
+  filter: brightness(0.95);
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #7cc4fa;
+  outline-offset: 2px;
+}
+
+.ghost {
+  background: #627d98;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.contact-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.contact-list li {
+  border: 1px solid #d9e2ec;
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.contact-list li button {
+  background: #d64545;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.85rem;
+}
+
+.status {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: #e6f0ff;
+  border-radius: 8px;
+}
+
+footer {
+  text-align: center;
+  color: #486581;
+  margin: 1rem;
+}
