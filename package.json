@@ -1,0 +1,35 @@
+{
+  "name": "homework",
+  "version": "1.0.0",
+  "description": "SafeConnect is a simple browser-based safety companion with:",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server/app.js",
+    "test": "node server/app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bigapc/homework.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/bigapc/homework/issues"
+  },
+  "homepage": "https://github.com/bigapc/homework#readme",
+  "dependencies": {
+    "@prisma/client": "^7.3.0",
+    "dotenv": "^17.2.4",
+    "express": "^5.2.1",
+    "prisma": "^7.3.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "live-server": "^1.2.2",
+    "nodemon": "^3.1.11"
+  }
+}
