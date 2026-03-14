@@ -4,6 +4,9 @@
   "description": "SafeConnect is a simple browser-based safety companion",
   "type": "module",
   "main": "index.js",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "dev": "node server/app.js",
     "start": "node server/app.js",
