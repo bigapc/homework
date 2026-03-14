@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mouse-Tracking Smiley Face</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #FFFBE6;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    /* ── Scene container ── */
+    #scene {
+      position: relative;
+      width: 640px;
+      height: 360px;
+      background-color: #FFFBE6;
+      overflow: visible;
+      /* scale down on small screens */
+      max-width: 100vw;
+    }
+
+    /* ── Background grid (SVG overlay) ── */
+    #background {
+      position: absolute;
+      left: 0; top: 0;
+      width: 640px; height: 360px;
+      z-index: 1;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* ── Face group ── */
+    #group {
+      position: absolute;
+      left: 197px; top: 57px;
+      width: 246px; height: 246px;
+      z-index: 2;
+      overflow: visible;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* ── Head ── */
+    #head {
+      position: absolute;
+      left: 0; top: 0;
+      width: 236px; height: 236px;
+      border-radius: 50%;
+      background: linear-gradient(180deg, #FFFB00 0%, #FF9300 100%);
+      border: 5px solid #000;
+      z-index: 0;
+      pointer-events: auto;
+      cursor: pointer;
+      overflow: visible;
+    }
+
+    /* ── Eye groups ── */
+    #lefty, #righty {
+      position: absolute;
+      width: 60px; height: 60px;
+      background: #FFF;
+      border: 2px solid #000;
+      border-radius: 64px;
+      z-index: 5;
+      overflow: visible;
+      pointer-events: none;
+      user-select: none;
+      transform-origin: center center;
+    }
+
+    #lefty  { left: 47px;  top: 51px; z-index: 5; }
+    #righty { left: 134px; top: 51px; z-index: 4; }
+
+    /* ── Eyeballs ── */
+    /* Offset from center (30,14) so the pupil swings visibly when the eye group rotates */
+    .eyeball {
+      position: absolute;
+      left: 30px; top: 14px;
+      width: 32px; height: 32px;
+      background: #000;
+      border-radius: 50%;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* ── Smile (SVG) ── */
+    #smile {
+      position: absolute;
+      left: 69px; top: 156px;
+      width: 107px; height: 42px;
+      z-index: 10;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    /* ── Whoa! mouth (hidden by default, shown on hover) ── */
+    #whoa {
+      position: absolute;
+      left: 83px; top: 158px;
+      width: 79px; height: 38px;
+      background: #000;
+      border-radius: 50%;
+      z-index: 8;
+      pointer-events: none;
+      user-select: none;
+      display: none;
+    }
+
+    /* ── Hover effect: swap smile → whoa ── */
+    #head:hover ~ #smile  { display: none; }
+    #head:hover ~ #whoa   { display: block; }
+  </style>
+</head>
+<body>
+
+<div id="scene">
+
+  <!-- Background grid -->
+  <div id="background">
+    <svg style="width:100%;height:100%;opacity:0.25;" fill="white">
+      <defs>
+        <pattern id="tens" width="10" height="10" patternUnits="userSpaceOnUse">
+          <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#ddd" stroke-width="1"></path>
+        </pattern>
+        <pattern id="hundreds" width="100" height="100" patternUnits="userSpaceOnUse">
+          <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#bbb" stroke-width="3"></path>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#tens)"></rect>
+      <rect width="100%" height="100%" fill="url(#hundreds)"></rect>
+    </svg>
+  </div>
+
+  <!-- Face group -->
+  <div id="group">
+
+    <!-- Head (hover triggers surprised face) -->
+    <div id="head"></div>
+
+    <!-- Left eye -->
+    <div id="lefty">
+      <div class="eyeball"></div>
+    </div>
+
+    <!-- Right eye -->
+    <div id="righty">
+      <div class="eyeball"></div>
+    </div>
+
+    <!-- Smile -->
+    <svg id="smile" viewBox="0 0 107 42" xmlns="http://www.w3.org/2000/svg" overflow="visible">
+      <path d="M 10,10 C 10,10 27,32 54,32 C 81,32 97,10 97,10"
+            fill="none" stroke="#000" stroke-width="10" stroke-linecap="round"/>
+    </svg>
+
+    <!-- Whoa! (surprised open mouth, shown on head hover) -->
+    <div id="whoa"></div>
+
+  </div><!-- /group -->
+
+</div><!-- /scene -->
+
+<script>
+  (function () {
+    var eLefty  = document.getElementById("lefty");
+    var eRighty = document.getElementById("righty");
+
+    function getCenter(el) {
+      var r = el.getBoundingClientRect();
+      return { x: r.left + r.width  / 2,
+               y: r.top  + r.height / 2 };
+    }
+
+    window.addEventListener("mousemove", function (event) {
+      var mx = event.clientX;
+      var my = event.clientY;
+
+      var lc = getCenter(eLefty);
+      var angle = Math.atan2(my - lc.y, mx - lc.x) * (180 / Math.PI);
+      eLefty.style.transform = "rotate(" + angle + "deg)";
+
+      var rc = getCenter(eRighty);
+      angle = Math.atan2(my - rc.y, mx - rc.x) * (180 / Math.PI);
+      eRighty.style.transform = "rotate(" + angle + "deg)";
+    });
+
+    /* Touch support: treat touchmove like mousemove */
+    window.addEventListener("touchmove", function (event) {
+      if (event.touches.length > 0) {
+        var t = event.touches[0];
+        window.dispatchEvent(new MouseEvent("mousemove", {
+          clientX: t.clientX,
+          clientY: t.clientY
+        }));
+      }
+    }, { passive: true });
+  })();
+</script>
+
+</body>
+</html>
