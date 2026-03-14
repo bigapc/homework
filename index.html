@@ -1,50 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>SafeConnect</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-      max-width: 600px;
-    }
-    h1 {
-      text-align: center;
-    }
-    form {
-      margin-bottom: 20px;
-      padding: 15px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-    }
-    input, textarea {
-      display: block;
-      width: 100%;
-      margin-bottom: 10px;
-      padding: 8px;
-      font-size: 14px;
-    }
-    button {
-      padding: 10px 15px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    .message {
-      font-weight: bold;
-      margin-bottom: 20px;
-    }
-  </style>
-</head>
-<body>
-  <h1>SafeConnect</h1>
-
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SafeConnect</title>
   <link rel="stylesheet" href="/styles.css" />
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+</head>
+<body>
+
   <header class="hero">
     <p class="eyebrow">SafeConnect readiness dashboard</p>
     <h1>Emergency response, check-ins, and courier onboarding</h1>
@@ -52,6 +15,7 @@
   </header>
 
   <main class="grid">
+
     <section class="card stack">
       <div class="section-heading">
         <h2>SOS Alert</h2>
@@ -148,6 +112,27 @@
         <button type="button" id="refreshHealth">Refresh health</button>
       </div>
     </section>
+
+    <section class="card stack">
+      <div class="section-heading">
+        <h2>Recent SOS Alerts</h2>
+        <button type="button" class="ghost" id="refreshSos">Refresh</button>
+      </div>
+      <ul id="sosList" class="contact-list" aria-live="polite">
+        <li class="status status-neutral">Loading&hellip;</li>
+      </ul>
+    </section>
+
+    <section class="card stack">
+      <div class="section-heading">
+        <h2>Recent Check-Ins</h2>
+        <button type="button" class="ghost" id="refreshCheckIn">Refresh</button>
+      </div>
+      <ul id="checkInList" class="contact-list" aria-live="polite">
+        <li class="status status-neutral">Loading&hellip;</li>
+      </ul>
+    </section>
+
   </main>
 
   <footer>
@@ -162,7 +147,7 @@
 
     function setMessage(element, text, tone) {
       element.textContent = text;
-      element.className = `status ${tone ? `status-${tone}` : ""}`.trim();
+      element.className = ("status " + (tone ? "status-" + tone : "")).trim();
       lastAction.textContent = text;
     }
 
@@ -177,14 +162,43 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
       const data = await parseJson(response);
-
-      if (!response.ok) {
-        throw new Error(data.error || "Request failed");
-      }
-
+      if (!response.ok) throw new Error(data.error || "Request failed");
       return data;
+    }
+
+    function formatDate(iso) {
+      return new Date(iso).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" });
+    }
+
+    function createHistoryItem(primaryText, timestamp) {
+      var item = document.createElement("li");
+      var content = document.createElement("span");
+      content.textContent = primaryText;
+
+      var ts = document.createElement("span");
+      ts.className = "badge";
+      ts.textContent = formatDate(timestamp);
+
+      item.appendChild(content);
+      item.appendChild(ts);
+      return item;
+    }
+
+    function renderNeutralMessage(list, message) {
+      list.textContent = "";
+      var item = document.createElement("li");
+      item.className = "status status-neutral";
+      item.textContent = message;
+      list.appendChild(item);
+    }
+
+    function renderErrorMessage(list, message) {
+      list.textContent = "";
+      var item = document.createElement("li");
+      item.className = "status status-error";
+      item.textContent = message;
+      list.appendChild(item);
     }
 
     async function loadHealth() {
@@ -194,7 +208,7 @@
         apiStatus.textContent = data.status === "ok" ? "Online" : "Unavailable";
         storageMode.textContent = data.storage || "unknown";
         storageBadge.textContent = (data.storage || "unknown").toUpperCase();
-        storageBadge.className = `badge ${data.storage === "prisma" ? "badge-success" : "badge-warning"}`;
+        storageBadge.className = "badge " + (data.storage === "prisma" ? "badge-success" : "badge-warning");
       } catch (error) {
         apiStatus.textContent = "Offline";
         storageMode.textContent = "unknown";
@@ -203,12 +217,51 @@
       }
     }
 
+    async function loadSosHistory() {
+      const list = document.getElementById("sosList");
+      try {
+        const res = await fetch("/api/sos");
+        const alerts = await parseJson(res);
+        if (!alerts.length) {
+          renderNeutralMessage(list, "No SOS alerts recorded yet.");
+          return;
+        }
+        list.textContent = "";
+        alerts.forEach(function(a) {
+          var summary = a.location + (a.notes ? " - " + a.notes : "");
+          list.appendChild(createHistoryItem(summary, a.createdAt));
+        });
+      } catch (e) {
+        renderErrorMessage(list, "Failed to load history.");
+      }
+    }
+
+    async function loadCheckInHistory() {
+      const list = document.getElementById("checkInList");
+      try {
+        const res = await fetch("/api/checkin");
+        const checkIns = await parseJson(res);
+        if (!checkIns.length) {
+          renderNeutralMessage(list, "No check-ins recorded yet.");
+          return;
+        }
+        list.textContent = "";
+        checkIns.forEach(function(c) {
+          var summary = c.contactName + " · " + c.duration + " min" + (c.notes ? " - " + c.notes : "");
+          list.appendChild(createHistoryItem(summary, c.createdAt));
+        });
+      } catch (e) {
+        renderErrorMessage(list, "Failed to load history.");
+      }
+    }
+
     document.getElementById("refreshHealth").addEventListener("click", loadHealth);
+    document.getElementById("refreshSos").addEventListener("click", loadSosHistory);
+    document.getElementById("refreshCheckIn").addEventListener("click", loadCheckInHistory);
 
-    document.getElementById("sosForm").addEventListener("submit", async (event) => {
+    document.getElementById("sosForm").addEventListener("submit", async function(event) {
       event.preventDefault();
-      const message = document.getElementById("sosMessage");
-
+      var message = document.getElementById("sosMessage");
       try {
         await sendJson("/api/sos", {
           location: document.getElementById("location").value.trim(),
@@ -219,12 +272,12 @@
       } catch (error) {
         setMessage(message, error.message, "error");
       }
+      loadSosHistory();
     });
 
-    document.getElementById("checkInForm").addEventListener("submit", async (event) => {
+    document.getElementById("checkInForm").addEventListener("submit", async function(event) {
       event.preventDefault();
-      const message = document.getElementById("checkMessage");
-
+      var message = document.getElementById("checkMessage");
       try {
         await sendJson("/api/checkin", {
           contactName: document.getElementById("contactName").value.trim(),
@@ -236,13 +289,13 @@
       } catch (error) {
         setMessage(message, error.message, "error");
       }
+      loadCheckInHistory();
     });
 
-    document.getElementById("onboardingForm").addEventListener("submit", async (event) => {
+    document.getElementById("onboardingForm").addEventListener("submit", async function(event) {
       event.preventDefault();
-      const message = document.getElementById("onboardingMessage");
-      const maxRadiusValue = document.getElementById("maxRadius").value;
-
+      var message = document.getElementById("onboardingMessage");
+      var maxRadiusValue = document.getElementById("maxRadius").value;
       try {
         await sendJson("/api/onboarding", {
           fullName: document.getElementById("fullName").value.trim(),
@@ -259,135 +312,8 @@
     });
 
     loadHealth();
-  </script>
-</body>
-</html>
-        });
-        const data = await response.json();
-        sosMessage.textContent = response.ok ? "✅ SOS alert sent!" : `❌ ${data.error}`;
-        sosForm.reset();
-      } catch (err) {
-        console.error(err);
-        sosMessage.textContent = "❌ Failed to send SOS alert";
-      }
-    });
-
-    // ------------------------
-    // Check-In Form Script
-    // ------------------------
-    const checkInForm = document.getElementById("checkInForm");
-    const checkMessage = document.getElementById("checkMessage");
-
-    checkInForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const contactName = document.getElementById("contactName").value;
-      const duration = Number(document.getElementById("duration").value);
-      const notes = document.getElementById("checkNotes").value;
-
-      try {
-        const response = await fetch("/api/checkin", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contactName, duration, notes }),
-        });
-        const data = await response.json();
-        checkMessage.textContent = response.ok ? "✅ Check-In saved!" : `❌ ${data.error}`;
-        checkInForm.reset();
-      } catch (err) {
-        console.error(err);
-        checkMessage.textContent = "❌ Failed to send Check-In";
-      }
-    });
-  </script>
-</body>
-</html>
-
-      width: 300px;
-    }
-    input, textarea, button {
-      display: block;
-      width: 100%;
-      margin-bottom: 10px;
-      padding: 8px;
-    }
-    div.message {
-      font-weight: bold;
-      margin-bottom: 20px;
-    }
-  </style>
-</head>
-<body>
-  <h1>SafeConnect</h1>
-
-  <!-- SOS Alert Form -->
-  <form id="sosForm">
-    <h2>SOS Alert</h2>
-    <input type="text" id="location" placeholder="Your location" required />
-    <textarea id="notes" placeholder="Additional notes"></textarea>
-    <button type="submit">Send SOS</button>
-  </form>
-  <div id="sosMessage" class="message"></div>
-
-  <!-- Check-In Form -->
-  <form id="checkinForm">
-    <h2>Check-In</h2>
-    <input type="text" id="contactName" placeholder="Contact Name" required />
-    <input type="number" id="duration" placeholder="Duration (minutes)" required />
-    <textarea id="notesCheckin" placeholder="Notes"></textarea>
-    <button type="submit">Check In</button>
-  </form>
-  <div id="checkinMessage" class="message"></div>
-
-  <!-- Frontend JavaScript -->
-  <script>
-    // SOS Form
-    const sosForm = document.getElementById("sosForm");
-    const sosMessage = document.getElementById("sosMessage");
-
-    sosForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const location = document.getElementById("location").value;
-      const notes = document.getElementById("notes").value;
-
-      try {
-        const response = await fetch("/api/sos", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ location, notes }),
-        });
-        const data = await response.json();
-        sosMessage.textContent = response.ok ? "✅ SOS alert sent!" : `❌ ${data.error}`;
-        sosForm.reset();
-      } catch (err) {
-        console.error(err);
-        sosMessage.textContent = "❌ Failed to send SOS alert";
-      }
-    });
-
-    // Check-In Form
-    const checkinForm = document.getElementById("checkinForm");
-    const checkinMessage = document.getElementById("checkinMessage");
-
-    checkinForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const contactName = document.getElementById("contactName").value;
-      const duration = Number(document.getElementById("duration").value);
-      const notes = document.getElementById("notesCheckin").value;
-
-      try {
-        const response = await fetch("/api/checkin", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contactName, duration, notes }),
-        });
-        const data = await response.json();
-        checkinMessage.textContent = response.ok ? "✅ Check-In saved!" : `❌ ${data.error}`;
-        checkinForm.reset();
-      } catch (err) {
-        console.error(err);
-        checkinMessage.textContent = "❌ Failed to save Check-In";
-      }
-    });
+    loadSosHistory();
+    loadCheckInHistory();
   </script>
 </body>
 </html>

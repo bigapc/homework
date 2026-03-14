@@ -9,7 +9,13 @@ SafeConnect is a simple browser-based safety companion with:
 
 ## Run locally
 
-Install dependencies and start the app server:
+1. Create a local env file from the template:
+
+```bash
+cp .env.example .env
+```
+
+2. Install dependencies and start the app server:
 
 ```bash
 npm install
