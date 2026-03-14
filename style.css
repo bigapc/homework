@@ -1,0 +1,105 @@
+/* =========================================================
+   Looking – Week 6 Styles
+   Face animation: eyes track the mouse cursor
+   ========================================================= */
+
+/* Reset / base */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  font-family: Arial, Helvetica, sans-serif;
+  overflow: hidden;
+}
+
+/* Center stage */
+.scene {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+}
+
+/* ---- Head ---- */
+.head {
+  position: relative;
+  width: 236px;
+  height: 246px;
+  background: linear-gradient(180deg, #fffb00 0%, #ff9300 100%);
+  border-radius: 64px;
+  border: 2px solid #000;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* ---- Eye sockets ---- */
+.eye-socket {
+  position: absolute;
+  top: 57px;
+  width: 60px;
+  height: 60px;
+  background: #fff;
+  border-radius: 50%;
+  border: 2px solid #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.left-socket  { left:  47px; }
+.right-socket { left: 134px; }
+
+/* ---- Eyeball (rotates to track cursor) ---- */
+.eyeball {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  /* pupil sits at the top so rotation swings it toward the mouse */
+  justify-content: center;
+  position: relative;
+  transform-origin: center center;
+  transition: transform 0.05s linear;
+}
+
+/* ---- Pupil ---- */
+.pupil {
+  position: absolute;
+  top: 8px;         /* offset from centre – rotation swings it outward */
+  width: 14px;
+  height: 14px;
+  background: #000;
+  border-radius: 50%;
+}
+
+/* ---- Mouth / smile ---- */
+.mouth-wrap {
+  position: absolute;
+  bottom: 42px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+}
+
+.smile {
+  width: 100%;
+  height: auto;
+}
+
+/* ---- Hint label ---- */
+.hint {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  user-select: none;
+}

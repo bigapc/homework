@@ -3,9 +3,40 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Week 6 Project</title>
+  <title>Looking – Week 6</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Week 6 Project</h1>
+  <main class="scene">
+    <!-- Face -->
+    <div class="head" id="head">
+
+      <!-- Left eye socket -->
+      <div class="eye-socket left-socket">
+        <div class="eyeball" id="lefty">
+          <div class="pupil"></div>
+        </div>
+      </div>
+
+      <!-- Right eye socket -->
+      <div class="eye-socket right-socket">
+        <div class="eyeball" id="righty">
+          <div class="pupil"></div>
+        </div>
+      </div>
+
+      <!-- Mouth / Smile -->
+      <div class="mouth-wrap">
+        <svg class="smile" viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 10 10 Q 50 50 90 10" stroke="#000" stroke-width="4" stroke-linecap="round" fill="none"/>
+        </svg>
+      </div>
+
+    </div><!-- /.head -->
+
+    <p class="hint">Move your mouse!</p>
+  </main>
+
+  <script src="script.js"></script>
 </body>
 </html>
