@@ -1,68 +1,393 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SafeConnect App</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <header class="hero">
-      <h1>SafeConnect</h1>
-      <p>Your lightweight personal safety and check-in companion.</p>
-    </header>
+<head>
+  <meta charset="UTF-8">
+  <title>SafeConnect</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      max-width: 600px;
+    }
+    h1 {
+      text-align: center;
+    }
+    form {
+      margin-bottom: 20px;
+      padding: 15px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    input, textarea {
+      display: block;
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 8px;
+      font-size: 14px;
+    }
+    button {
+      padding: 10px 15px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .message {
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>SafeConnect</h1>
 
-    <main class="grid">
-      <section class="card" aria-labelledby="contact-title">
-        <h2 id="contact-title">Trusted Contacts</h2>
-        <form id="contact-form" class="stack">
-          <label for="name">Name</label>
-          <input id="name" type="text" required maxlength="40" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SafeConnect</title>
+  <link rel="stylesheet" href="/styles.css" />
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+  <header class="hero">
+    <p class="eyebrow">SafeConnect readiness dashboard</p>
+    <h1>Emergency response, check-ins, and courier onboarding</h1>
+    <p>Run the full SafeConnect flow from one page while the backend automatically chooses database mode or a safe development fallback.</p>
+  </header>
 
-          <label for="relationship">Relationship</label>
-          <input id="relationship" type="text" required maxlength="30" />
+  <main class="grid">
+    <section class="card stack">
+      <div class="section-heading">
+        <h2>SOS Alert</h2>
+        <span class="badge badge-danger">High priority</span>
+      </div>
+      <form id="sosForm" class="stack">
+        <label>
+          Current location
+          <input type="text" id="location" name="location" placeholder="123 Main St, parking lot, gate code, landmark" required />
+        </label>
+        <label>
+          Situation notes
+          <textarea id="notes" name="notes" rows="4" placeholder="Describe what is happening, who is nearby, or what responders should know"></textarea>
+        </label>
+        <button type="submit">Send SOS alert</button>
+      </form>
+      <div id="sosMessage" class="status" aria-live="polite">Waiting for input.</div>
+    </section>
 
-          <label for="phone">Phone</label>
-          <input id="phone" type="tel" required pattern="[0-9+\-()\s]{7,}" />
+    <section class="card stack">
+      <div class="section-heading">
+        <h2>Check-In</h2>
+        <span class="badge">Routine safety</span>
+      </div>
+      <form id="checkInForm" class="stack">
+        <label>
+          Contact name
+          <input type="text" id="contactName" name="contactName" placeholder="Alex, roommate, sister, driver lead" required />
+        </label>
+        <label>
+          Duration in minutes
+          <input type="number" id="duration" name="duration" min="1" step="1" placeholder="30" required />
+        </label>
+        <label>
+          Notes
+          <textarea id="checkNotes" name="checkNotes" rows="4" placeholder="Share destination, timeline, and anything that should trigger follow-up"></textarea>
+        </label>
+        <button type="submit">Save check-in</button>
+      </form>
+      <div id="checkMessage" class="status" aria-live="polite">No active check-in submission.</div>
+    </section>
 
-          <button type="submit">Add Contact</button>
-        </form>
-        <ul id="contact-list" class="contact-list" aria-live="polite"></ul>
-      </section>
-
-      <section class="card" aria-labelledby="checkin-title">
-        <h2 id="checkin-title">Safety Check-In</h2>
-        <label for="duration">Check-in duration (minutes)</label>
-        <input id="duration" type="number" min="1" max="180" value="10" />
-        <div class="actions">
-          <button id="start-checkin" type="button">Start Timer</button>
-          <button id="cancel-checkin" class="ghost" type="button">Cancel</button>
+    <section class="card stack">
+      <div class="section-heading">
+        <h2>Courier Onboarding</h2>
+        <span class="badge badge-success">Operations</span>
+      </div>
+      <form id="onboardingForm" class="stack">
+        <label>
+          Full name
+          <input type="text" id="fullName" name="fullName" placeholder="Jordan Lee" required />
+        </label>
+        <label>
+          Email
+          <input type="email" id="email" name="email" placeholder="driver@example.com" required />
+        </label>
+        <label>
+          Phone
+          <input type="tel" id="phone" name="phone" placeholder="555-123-4567" required />
+        </label>
+        <div class="field-row">
+          <label>
+            Availability
+            <input type="text" id="availability" name="availability" placeholder="Weeknights, weekends, overnight" />
+          </label>
+          <label>
+            Max radius
+            <input type="number" id="maxRadius" name="maxRadius" min="1" step="1" placeholder="25" />
+          </label>
         </div>
-        <p id="timer-status" class="status" role="status" aria-live="polite">No active check-in.</p>
-      </section>
+        <button type="submit">Submit onboarding</button>
+      </form>
+      <div id="onboardingMessage" class="status" aria-live="polite">No onboarding submission yet.</div>
+    </section>
 
-      <section class="card" aria-labelledby="sos-title">
-        <h2 id="sos-title">SOS Assistant</h2>
-        <label for="location">Current location</label>
-        <input id="location" type="text" placeholder="e.g., 123 Main St" />
+    <section class="card stack">
+      <div class="section-heading">
+        <h2>System Status</h2>
+        <span id="storageBadge" class="badge">Checking</span>
+      </div>
+      <div class="status status-neutral">
+        <strong>API status:</strong>
+        <span id="apiStatus">Checking backend health...</span>
+      </div>
+      <div class="status status-neutral">
+        <strong>Storage mode:</strong>
+        <span id="storageMode">Unknown</span>
+      </div>
+      <div class="status status-neutral">
+        <strong>Last action:</strong>
+        <span id="lastAction">None yet.</span>
+      </div>
+      <div class="actions">
+        <button type="button" id="refreshHealth">Refresh health</button>
+      </div>
+    </section>
+  </main>
 
-        <label for="notes">Notes</label>
-        <textarea id="notes" rows="3" placeholder="Describe your situation"></textarea>
+  <footer>
+    SafeConnect local workspace. If the configured database is unavailable, the app falls back to a safe development mode so feature work can continue.
+  </footer>
 
-        <div class="actions">
-          <button id="build-message" type="button">Generate SOS Message</button>
-          <button id="copy-message" class="ghost" type="button">Copy Message</button>
-        </div>
+  <script>
+    const apiStatus = document.getElementById("apiStatus");
+    const storageMode = document.getElementById("storageMode");
+    const storageBadge = document.getElementById("storageBadge");
+    const lastAction = document.getElementById("lastAction");
 
-        <label for="message">Generated message</label>
-        <textarea id="message" rows="6" readonly></textarea>
-      </section>
-    </main>
+    function setMessage(element, text, tone) {
+      element.textContent = text;
+      element.className = `status ${tone ? `status-${tone}` : ""}`.trim();
+      lastAction.textContent = text;
+    }
 
-    <footer>
-      <small>SafeConnect is an educational demo. Always call emergency services in urgent danger.</small>
-    </footer>
+    async function parseJson(response) {
+      const text = await response.text();
+      return text ? JSON.parse(text) : {};
+    }
 
-    <script src="app.js"></script>
-  </body>
+    async function sendJson(url, payload) {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await parseJson(response);
+
+      if (!response.ok) {
+        throw new Error(data.error || "Request failed");
+      }
+
+      return data;
+    }
+
+    async function loadHealth() {
+      try {
+        const response = await fetch("/api/health");
+        const data = await parseJson(response);
+        apiStatus.textContent = data.status === "ok" ? "Online" : "Unavailable";
+        storageMode.textContent = data.storage || "unknown";
+        storageBadge.textContent = (data.storage || "unknown").toUpperCase();
+        storageBadge.className = `badge ${data.storage === "prisma" ? "badge-success" : "badge-warning"}`;
+      } catch (error) {
+        apiStatus.textContent = "Offline";
+        storageMode.textContent = "unknown";
+        storageBadge.textContent = "OFFLINE";
+        storageBadge.className = "badge badge-danger";
+      }
+    }
+
+    document.getElementById("refreshHealth").addEventListener("click", loadHealth);
+
+    document.getElementById("sosForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const message = document.getElementById("sosMessage");
+
+      try {
+        await sendJson("/api/sos", {
+          location: document.getElementById("location").value.trim(),
+          notes: document.getElementById("notes").value.trim(),
+        });
+        setMessage(message, "SOS alert captured successfully.", "success");
+        event.target.reset();
+      } catch (error) {
+        setMessage(message, error.message, "error");
+      }
+    });
+
+    document.getElementById("checkInForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const message = document.getElementById("checkMessage");
+
+      try {
+        await sendJson("/api/checkin", {
+          contactName: document.getElementById("contactName").value.trim(),
+          duration: Number(document.getElementById("duration").value),
+          notes: document.getElementById("checkNotes").value.trim(),
+        });
+        setMessage(message, "Check-in saved successfully.", "success");
+        event.target.reset();
+      } catch (error) {
+        setMessage(message, error.message, "error");
+      }
+    });
+
+    document.getElementById("onboardingForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const message = document.getElementById("onboardingMessage");
+      const maxRadiusValue = document.getElementById("maxRadius").value;
+
+      try {
+        await sendJson("/api/onboarding", {
+          fullName: document.getElementById("fullName").value.trim(),
+          email: document.getElementById("email").value.trim(),
+          phone: document.getElementById("phone").value.trim(),
+          availability: document.getElementById("availability").value.trim(),
+          maxRadius: maxRadiusValue ? Number(maxRadiusValue) : null,
+        });
+        setMessage(message, "Driver onboarding submitted successfully.", "success");
+        event.target.reset();
+      } catch (error) {
+        setMessage(message, error.message, "error");
+      }
+    });
+
+    loadHealth();
+  </script>
+</body>
+</html>
+        });
+        const data = await response.json();
+        sosMessage.textContent = response.ok ? "✅ SOS alert sent!" : `❌ ${data.error}`;
+        sosForm.reset();
+      } catch (err) {
+        console.error(err);
+        sosMessage.textContent = "❌ Failed to send SOS alert";
+      }
+    });
+
+    // ------------------------
+    // Check-In Form Script
+    // ------------------------
+    const checkInForm = document.getElementById("checkInForm");
+    const checkMessage = document.getElementById("checkMessage");
+
+    checkInForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const contactName = document.getElementById("contactName").value;
+      const duration = Number(document.getElementById("duration").value);
+      const notes = document.getElementById("checkNotes").value;
+
+      try {
+        const response = await fetch("/api/checkin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contactName, duration, notes }),
+        });
+        const data = await response.json();
+        checkMessage.textContent = response.ok ? "✅ Check-In saved!" : `❌ ${data.error}`;
+        checkInForm.reset();
+      } catch (err) {
+        console.error(err);
+        checkMessage.textContent = "❌ Failed to send Check-In";
+      }
+    });
+  </script>
+</body>
+</html>
+
+      width: 300px;
+    }
+    input, textarea, button {
+      display: block;
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 8px;
+    }
+    div.message {
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>SafeConnect</h1>
+
+  <!-- SOS Alert Form -->
+  <form id="sosForm">
+    <h2>SOS Alert</h2>
+    <input type="text" id="location" placeholder="Your location" required />
+    <textarea id="notes" placeholder="Additional notes"></textarea>
+    <button type="submit">Send SOS</button>
+  </form>
+  <div id="sosMessage" class="message"></div>
+
+  <!-- Check-In Form -->
+  <form id="checkinForm">
+    <h2>Check-In</h2>
+    <input type="text" id="contactName" placeholder="Contact Name" required />
+    <input type="number" id="duration" placeholder="Duration (minutes)" required />
+    <textarea id="notesCheckin" placeholder="Notes"></textarea>
+    <button type="submit">Check In</button>
+  </form>
+  <div id="checkinMessage" class="message"></div>
+
+  <!-- Frontend JavaScript -->
+  <script>
+    // SOS Form
+    const sosForm = document.getElementById("sosForm");
+    const sosMessage = document.getElementById("sosMessage");
+
+    sosForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const location = document.getElementById("location").value;
+      const notes = document.getElementById("notes").value;
+
+      try {
+        const response = await fetch("/api/sos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ location, notes }),
+        });
+        const data = await response.json();
+        sosMessage.textContent = response.ok ? "✅ SOS alert sent!" : `❌ ${data.error}`;
+        sosForm.reset();
+      } catch (err) {
+        console.error(err);
+        sosMessage.textContent = "❌ Failed to send SOS alert";
+      }
+    });
+
+    // Check-In Form
+    const checkinForm = document.getElementById("checkinForm");
+    const checkinMessage = document.getElementById("checkinMessage");
+
+    checkinForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const contactName = document.getElementById("contactName").value;
+      const duration = Number(document.getElementById("duration").value);
+      const notes = document.getElementById("notesCheckin").value;
+
+      try {
+        const response = await fetch("/api/checkin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contactName, duration, notes }),
+        });
+        const data = await response.json();
+        checkinMessage.textContent = response.ok ? "✅ Check-In saved!" : `❌ ${data.error}`;
+        checkinForm.reset();
+      } catch (err) {
+        console.error(err);
+        checkinMessage.textContent = "❌ Failed to save Check-In";
+      }
+    });
+  </script>
+</body>
 </html>

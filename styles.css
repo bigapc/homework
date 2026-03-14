@@ -11,6 +11,10 @@
 body {
   margin: 0;
   min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(86, 204, 242, 0.22), transparent 28%),
+    radial-gradient(circle at top right, rgba(47, 128, 237, 0.18), transparent 30%),
+    #f0f4f8;
 }
 
 .hero {
@@ -23,6 +27,14 @@ body {
 .hero h1 {
   margin: 0;
   font-size: clamp(2rem, 4vw, 3rem);
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.82rem;
+  opacity: 0.86;
 }
 
 .hero p {
@@ -45,9 +57,26 @@ body {
   box-shadow: 0 8px 20px rgba(16, 42, 67, 0.12);
 }
 
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.section-heading h2 {
+  margin: 0;
+}
+
 .stack {
   display: grid;
   gap: 0.7rem;
+}
+
+.field-row {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
 label {
@@ -133,6 +162,49 @@ textarea:focus-visible {
   padding: 0.75rem;
   background: #e6f0ff;
   border-radius: 8px;
+}
+
+.status-success {
+  background: #e3f9e5;
+  color: #1f6f43;
+}
+
+.status-error {
+  background: #ffe3e3;
+  color: #9b1c1c;
+}
+
+.status-neutral {
+  margin-top: 0;
+  background: #f8fbff;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.28rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: #d9e2ec;
+  color: #243b53;
+}
+
+.badge-success {
+  background: #d9f2e3;
+  color: #1f6f43;
+}
+
+.badge-warning {
+  background: #fff3c4;
+  color: #8d6b00;
+}
+
+.badge-danger {
+  background: #ffd8d8;
+  color: #9b1c1c;
 }
 
 footer {

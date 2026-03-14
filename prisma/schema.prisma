@@ -1,16 +1,91 @@
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
+
+
 
 generator client {
   provider = "prisma-client-js"
 }
 
-
-
-
 model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
+  id        String   @id @db.Uuid
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+
+  casesAsVictim     Case[] @relation("VictimCases")
+  casesAsOtherParty Case[] @relation("OtherPartyCases")
+}
+
+model Case {
+  id           String   @id @default(uuid()) @db.Uuid
+  victimId     String   @db.Uuid
+  otherPartyId String   @db.Uuid
+  createdAt    DateTime @default(now())
+
+  victim     User @relation("VictimCases", fields: [victimId], references: [id])
+  otherParty User @relation("OtherPartyCases", fields: [otherPartyId], references: [id])
+
+  propertyItems PropertyItem[]
+  exchanges     Exchange[]
+}
+
+model PropertyItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  caseId    String   @db.Uuid
+  name      String
+  details   String?
+  createdAt DateTime @default(now())
+
+  case Case @relation(fields: [caseId], references: [id])
+}
+
+model Courier {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  vehicle   String
+  verified  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  exchanges Exchange[]
+}
+
+model Exchange {
+  id         String   @id @default(uuid()) @db.Uuid
+  caseId     String   @db.Uuid
+  courierId  String   @db.Uuid
+  status     String
+  createdAt  DateTime @default(now())
+
+  case    Case    @relation(fields: [caseId], references: [id])
+  courier Courier @relation(fields: [courierId], references: [id])
+}
+
+model SOSAlert {
+  id        String   @id @default(uuid()) @db.Uuid
+  location  String
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+model CheckIn {
+  id          String   @id @default(uuid()) @db.Uuid
+  contactName String
+  duration    Int
+  notes       String?
+  createdAt   DateTime @default(now())
+}
+
+model CourierOnboarding {
+  id                    String   @id @default(uuid()) @db.Uuid
+  fullName              String
+  email                 String   @unique
+  phone                 String
+  backgroundCheckPassed Boolean  @default(false)
+  availability          String?  // JSON string or plain text for days/hours
+  maxRadius             Int?     // miles
+  createdAt             DateTime @default(now())
 }
