@@ -1,0 +1,17 @@
+model CourierOnboarding {
+  id                String   @id @default(uuid()) @db.Uuid
+  fullName          String
+  email             String   @unique
+  phoneNumber       String
+  licenseNumber     String
+  vehicleType       String
+  vehicleYear       Int
+  licensePlate      String
+  insuranceProof    String   // path/URL to uploaded insurance doc
+  backgroundCheck   String   // path/URL to uploaded background check doc
+  DUIHistory        Boolean  @default(false)
+  availability      Json     // e.g., [{day: "Mon", start: "08:00", end: "18:00"}]
+  mileRadius        Int
+  approved          Boolean  @default(false)
+  createdAt         DateTime @default(now())
+}

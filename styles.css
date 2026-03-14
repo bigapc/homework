@@ -1,0 +1,214 @@
+:root {
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #102a43;
+  background: #f0f4f8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(86, 204, 242, 0.22), transparent 28%),
+    radial-gradient(circle at top right, rgba(47, 128, 237, 0.18), transparent 30%),
+    #f0f4f8;
+}
+
+.hero {
+  background: linear-gradient(135deg, #2f80ed, #56ccf2);
+  color: white;
+  text-align: center;
+  padding: 2.5rem 1rem;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3rem);
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.82rem;
+  opacity: 0.86;
+}
+
+.hero p {
+  margin-top: 0.75rem;
+  font-size: 1.05rem;
+}
+
+.grid {
+  width: min(1100px, 92vw);
+  margin: 1.5rem auto;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.card {
+  background: white;
+  border-radius: 14px;
+  padding: 1rem;
+  box-shadow: 0 8px 20px rgba(16, 42, 67, 0.12);
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.section-heading h2 {
+  margin: 0;
+}
+
+.stack {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.field-row {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 600;
+}
+
+input,
+textarea,
+button {
+  font: inherit;
+}
+
+input,
+textarea {
+  border: 1px solid #bcccdc;
+  border-radius: 8px;
+  padding: 0.55rem;
+}
+
+textarea {
+  resize: vertical;
+}
+
+button {
+  border: none;
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  color: white;
+  background: #2f80ed;
+  cursor: pointer;
+}
+
+button:hover {
+  filter: brightness(0.95);
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #7cc4fa;
+  outline-offset: 2px;
+}
+
+.ghost {
+  background: #627d98;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.contact-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.contact-list li {
+  border: 1px solid #d9e2ec;
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.contact-list li button {
+  background: #d64545;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.85rem;
+}
+
+.status {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: #e6f0ff;
+  border-radius: 8px;
+}
+
+.status-success {
+  background: #e3f9e5;
+  color: #1f6f43;
+}
+
+.status-error {
+  background: #ffe3e3;
+  color: #9b1c1c;
+}
+
+.status-neutral {
+  margin-top: 0;
+  background: #f8fbff;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.28rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: #d9e2ec;
+  color: #243b53;
+}
+
+.badge-success {
+  background: #d9f2e3;
+  color: #1f6f43;
+}
+
+.badge-warning {
+  background: #fff3c4;
+  color: #8d6b00;
+}
+
+.badge-danger {
+  background: #ffd8d8;
+  color: #9b1c1c;
+}
+
+footer {
+  text-align: center;
+  color: #486581;
+  margin: 1rem;
+}

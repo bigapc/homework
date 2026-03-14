@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SafeConnect</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+
+  <header class="hero">
+    <p class="eyebrow">SafeConnect readiness dashboard</p>
+    <h1>Emergency response, check-ins, and courier onboarding</h1>
+    <p>Run the full SafeConnect flow from one page while the backend automatically chooses database mode or a safe development fallback.</p>
+  </header>
+
+  <main class="grid">
+
+    <section class="card stack">
+      <div class="section-heading">
+        <h2>SOS Alert</h2>
+        <span class="badge badge-danger">High priority</span>
+      </div>
+      <form id="sosForm" class="stack">
+        <label>
+          Current location
+          <input type="text" id="location" name="location" placeholder="123 Main St, parking lot, gate code, landmark" required />
+        </label>
+        <label>
+          Situation notes
+          <textarea id="notes" name="notes" rows="4" placeholder="Describe what is happening, who is nearby, or what responders should know"></textarea>
+        </label>
+        <button type="submit">Send SOS alert</button>
+      </form>
+      <div id="sosMessage" class="status" aria-live="polite">Waiting for input.</div>
+    </section>
+
+    <section class="card stack">
+      <div class="section-heading">
+        <h2>Check-In</h2>
+        <span class="badge">Routine safety</span>
+      </div>
+      <form id="checkInForm" class="stack">
+        <label>
+          Contact name
+          <input type="text" id="contactName" name="contactName" placeholder="Alex, roommate, sister, driver lead" required />
+        </label>
+        <label>
+          Duration in minutes
+          <input type="number" id="duration" name="duration" min="1" step="1" placeholder="30" required />
+        </label>
+        <label>
+          Notes
+          <textarea id="checkNotes" name="checkNotes" rows="4" placeholder="Share destination, timeline, and anything that should trigger follow-up"></textarea>
+        </label>
+        <button type="submit">Save check-in</button>
+      </form>
+      <div id="checkMessage" class="status" aria-live="polite">No active check-in submission.</div>
+    </section>
+
+    <section class="card stack">
+      <div class="section-heading">
+        <h2>Courier Onboarding</h2>
+        <span class="badge badge-success">Operations</span>
+      </div>
+      <form id="onboardingForm" class="stack">
+        <label>
+          Full name
+          <input type="text" id="fullName" name="fullName" placeholder="Jordan Lee" required />
+        </label>
+        <label>
+          Email
+          <input type="email" id="email" name="email" placeholder="driver@example.com" required />
+        </label>
+        <label>
+          Phone
+          <input type="tel" id="phone" name="phone" placeholder="555-123-4567" required />
+        </label>
+        <div class="field-row">
+          <label>
+            Availability
+            <input type="text" id="availability" name="availability" placeholder="Weeknights, weekends, overnight" />
+          </label>
+          <label>
+            Max radius
+            <input type="number" id="maxRadius" name="maxRadius" min="1" step="1" placeholder="25" />
+          </label>
+        </div>
+        <button type="submit">Submit onboarding</button>
+      </form>
+      <div id="onboardingMessage" class="status" aria-live="polite">No onboarding submission yet.</div>
+    </section>
+
+    <section class="card stack">
+      <div class="section-heading">
+        <h2>System Status</h2>
+        <span id="storageBadge" class="badge">Checking</span>
+      </div>
+      <div class="status status-neutral">
+        <strong>API status:</strong>
+        <span id="apiStatus">Checking backend health...</span>
+      </div>
+      <div class="status status-neutral">
+        <strong>Storage mode:</strong>
+        <span id="storageMode">Unknown</span>
+      </div>
+      <div class="status status-neutral">
+        <strong>Last action:</strong>
+        <span id="lastAction">None yet.</span>
+      </div>
+      <div class="actions">
+        <button type="button" id="refreshHealth">Refresh health</button>
+      </div>
+    </section>
+
+    <section class="card stack">
+      <div class="section-heading">
+        <h2>Recent SOS Alerts</h2>
+        <button type="button" class="ghost" id="refreshSos">Refresh</button>
+      </div>
+      <ul id="sosList" class="contact-list" aria-live="polite">
+        <li class="status status-neutral">Loading&hellip;</li>
+      </ul>
+    </section>
+
+    <section class="card stack">
+      <div class="section-heading">
+        <h2>Recent Check-Ins</h2>
+        <button type="button" class="ghost" id="refreshCheckIn">Refresh</button>
+      </div>
+      <ul id="checkInList" class="contact-list" aria-live="polite">
+        <li class="status status-neutral">Loading&hellip;</li>
+      </ul>
+    </section>
+
+  </main>
+
+  <footer>
+    SafeConnect local workspace. If the configured database is unavailable, the app falls back to a safe development mode so feature work can continue.
+  </footer>
+
+  <script>
+    const apiStatus = document.getElementById("apiStatus");
+    const storageMode = document.getElementById("storageMode");
+    const storageBadge = document.getElementById("storageBadge");
+    const lastAction = document.getElementById("lastAction");
+
+    function setMessage(element, text, tone) {
+      element.textContent = text;
+      element.className = ("status " + (tone ? "status-" + tone : "")).trim();
+      lastAction.textContent = text;
+    }
+
+    async function parseJson(response) {
+      const text = await response.text();
+      return text ? JSON.parse(text) : {};
+    }
+
+    async function sendJson(url, payload) {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await parseJson(response);
+      if (!response.ok) throw new Error(data.error || "Request failed");
+      return data;
+    }
+
+    function formatDate(iso) {
+      return new Date(iso).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" });
+    }
+
+    function createHistoryItem(primaryText, timestamp) {
+      var item = document.createElement("li");
+      var content = document.createElement("span");
+      content.textContent = primaryText;
+
+      var ts = document.createElement("span");
+      ts.className = "badge";
+      ts.textContent = formatDate(timestamp);
+
+      item.appendChild(content);
+      item.appendChild(ts);
+      return item;
+    }
+
+    function renderNeutralMessage(list, message) {
+      list.textContent = "";
+      var item = document.createElement("li");
+      item.className = "status status-neutral";
+      item.textContent = message;
+      list.appendChild(item);
+    }
+
+    function renderErrorMessage(list, message) {
+      list.textContent = "";
+      var item = document.createElement("li");
+      item.className = "status status-error";
+      item.textContent = message;
+      list.appendChild(item);
+    }
+
+    async function loadHealth() {
+      try {
+        const response = await fetch("/api/health");
+        const data = await parseJson(response);
+        apiStatus.textContent = data.status === "ok" ? "Online" : "Unavailable";
+        storageMode.textContent = data.storage || "unknown";
+        storageBadge.textContent = (data.storage || "unknown").toUpperCase();
+        storageBadge.className = "badge " + (data.storage === "prisma" ? "badge-success" : "badge-warning");
+      } catch (error) {
+        apiStatus.textContent = "Offline";
+        storageMode.textContent = "unknown";
+        storageBadge.textContent = "OFFLINE";
+        storageBadge.className = "badge badge-danger";
+      }
+    }
+
+    async function loadSosHistory() {
+      const list = document.getElementById("sosList");
+      try {
+        const res = await fetch("/api/sos");
+        const alerts = await parseJson(res);
+        if (!alerts.length) {
+          renderNeutralMessage(list, "No SOS alerts recorded yet.");
+          return;
+        }
+        list.textContent = "";
+        alerts.forEach(function(a) {
+          var summary = a.location + (a.notes ? " - " + a.notes : "");
+          list.appendChild(createHistoryItem(summary, a.createdAt));
+        });
+      } catch (e) {
+        renderErrorMessage(list, "Failed to load history.");
+      }
+    }
+
+    async function loadCheckInHistory() {
+      const list = document.getElementById("checkInList");
+      try {
+        const res = await fetch("/api/checkin");
+        const checkIns = await parseJson(res);
+        if (!checkIns.length) {
+          renderNeutralMessage(list, "No check-ins recorded yet.");
+          return;
+        }
+        list.textContent = "";
+        checkIns.forEach(function(c) {
+          var summary = c.contactName + " · " + c.duration + " min" + (c.notes ? " - " + c.notes : "");
+          list.appendChild(createHistoryItem(summary, c.createdAt));
+        });
+      } catch (e) {
+        renderErrorMessage(list, "Failed to load history.");
+      }
+    }
+
+    document.getElementById("refreshHealth").addEventListener("click", loadHealth);
+    document.getElementById("refreshSos").addEventListener("click", loadSosHistory);
+    document.getElementById("refreshCheckIn").addEventListener("click", loadCheckInHistory);
+
+    document.getElementById("sosForm").addEventListener("submit", async function(event) {
+      event.preventDefault();
+      var message = document.getElementById("sosMessage");
+      try {
+        await sendJson("/api/sos", {
+          location: document.getElementById("location").value.trim(),
+          notes: document.getElementById("notes").value.trim(),
+        });
+        setMessage(message, "SOS alert captured successfully.", "success");
+        event.target.reset();
+      } catch (error) {
+        setMessage(message, error.message, "error");
+      }
+      loadSosHistory();
+    });
+
+    document.getElementById("checkInForm").addEventListener("submit", async function(event) {
+      event.preventDefault();
+      var message = document.getElementById("checkMessage");
+      try {
+        await sendJson("/api/checkin", {
+          contactName: document.getElementById("contactName").value.trim(),
+          duration: Number(document.getElementById("duration").value),
+          notes: document.getElementById("checkNotes").value.trim(),
+        });
+        setMessage(message, "Check-in saved successfully.", "success");
+        event.target.reset();
+      } catch (error) {
+        setMessage(message, error.message, "error");
+      }
+      loadCheckInHistory();
+    });
+
+    document.getElementById("onboardingForm").addEventListener("submit", async function(event) {
+      event.preventDefault();
+      var message = document.getElementById("onboardingMessage");
+      var maxRadiusValue = document.getElementById("maxRadius").value;
+      try {
+        await sendJson("/api/onboarding", {
+          fullName: document.getElementById("fullName").value.trim(),
+          email: document.getElementById("email").value.trim(),
+          phone: document.getElementById("phone").value.trim(),
+          availability: document.getElementById("availability").value.trim(),
+          maxRadius: maxRadiusValue ? Number(maxRadiusValue) : null,
+        });
+        setMessage(message, "Driver onboarding submitted successfully.", "success");
+        event.target.reset();
+      } catch (error) {
+        setMessage(message, error.message, "error");
+      }
+    });
+
+    loadHealth();
+    loadSosHistory();
+    loadCheckInHistory();
+  </script>
+</body>
+</html>
