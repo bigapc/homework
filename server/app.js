@@ -271,7 +271,12 @@ process.on("SIGINT", async () => {
 });
 
 const PORT = process.env.PORT || 3000;
+const shouldStartServer = process.env.VERCEL !== "1";
 
-app.listen(PORT, () => {
-  console.log(`🚀 SafeConnect running at http://localhost:${PORT}`);
-});
+if (shouldStartServer) {
+  app.listen(PORT, () => {
+    console.log(`🚀 SafeConnect running at http://localhost:${PORT}`);
+  });
+}
+
+export default app;
