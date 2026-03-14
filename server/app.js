@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import express from "express";
 import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
+let prisma;
 const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
@@ -20,6 +20,14 @@ const fallbackStore = {
 };
 
 let storagePromise;
+
+function getPrismaClient() {
+  if (!prisma) {
+    prisma = new PrismaClient();
+  }
+
+  return prisma;
+}
 
 function trimText(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -96,45 +104,47 @@ function createFallbackApi() {
 }
 
 async function createStorage() {
-  const hasRequiredModels =
-    typeof prisma.sOSAlert?.create === "function" &&
-    typeof prisma.sOSAlert?.findMany === "function" &&
-    typeof prisma.checkIn?.create === "function" &&
-    typeof prisma.checkIn?.findMany === "function" &&
-    typeof prisma.courierOnboarding?.create === "function";
-
-  if (!hasRequiredModels) {
-    console.warn("SafeConnect storage fallback enabled: generated Prisma client does not match the current API models.");
-    return createFallbackApi();
-  }
-
   try {
-    await prisma.$connect();
+    const prismaClient = getPrismaClient();
+
+    const hasRequiredModels =
+      typeof prismaClient.sOSAlert?.create === "function" &&
+      typeof prismaClient.sOSAlert?.findMany === "function" &&
+      typeof prismaClient.checkIn?.create === "function" &&
+      typeof prismaClient.checkIn?.findMany === "function" &&
+      typeof prismaClient.courierOnboarding?.create === "function";
+
+    if (!hasRequiredModels) {
+      console.warn("SafeConnect storage fallback enabled: generated Prisma client does not match the current API models.");
+      return createFallbackApi();
+    }
+
+    await prismaClient.$connect();
 
     return {
       mode: "prisma",
       async createSosAlert({ location, notes }) {
-        return prisma.sOSAlert.create({
+        return prismaClient.sOSAlert.create({
           data: { location, notes },
         });
       },
       async listSosAlerts() {
-        return prisma.sOSAlert.findMany({
+        return prismaClient.sOSAlert.findMany({
           orderBy: { createdAt: "desc" },
         });
       },
       async createCheckIn({ contactName, duration, notes }) {
-        return prisma.checkIn.create({
+        return prismaClient.checkIn.create({
           data: { contactName, duration, notes },
         });
       },
       async listCheckIns() {
-        return prisma.checkIn.findMany({
+        return prismaClient.checkIn.findMany({
           orderBy: { createdAt: "desc" },
         });
       },
       async createOnboarding({ fullName, email, phone, availability, maxRadius }) {
-        return prisma.courierOnboarding.create({
+        return prismaClient.courierOnboarding.create({
           data: { fullName, email, phone, availability, maxRadius },
         });
       },
@@ -266,7 +276,9 @@ app.get("/", (_req, res) => {
    Graceful Shutdown
 ================================ */
 process.on("SIGINT", async () => {
-  await prisma.$disconnect();
+  if (prisma) {
+    await prisma.$disconnect();
+  }
   process.exit(0);
 });
 
