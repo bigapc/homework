@@ -47,6 +47,22 @@ function normalizeOptionalInt(value) {
   return Number.isInteger(parsed) ? parsed : null;
 }
 
+function isPlainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function isValidPhone(value) {
+  return /^[0-9+().\-\s]{7,20}$/.test(value);
+}
+
+function exceedsLength(value, maxLength) {
+  return typeof value === "string" && value.length > maxLength;
+}
+
 function createFallbackApi() {
   return {
     mode: fallbackStore.mode,
@@ -163,12 +179,17 @@ async function getStorage() {
   return storagePromise;
 }
 
-app.use(express.json());
+app.use(express.json({ limit: "100kb" }));
 app.use(express.static(rootDir));
 
 app.get("/api/health", async (_req, res) => {
-  const storage = await getStorage();
-  res.json({ status: "ok", storage: storage.mode });
+  try {
+    const storage = await getStorage();
+    res.json({ status: "ok", storage: storage.mode });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to read health status" });
+  }
 });
 
 /* ===============================
@@ -176,12 +197,20 @@ app.get("/api/health", async (_req, res) => {
 ================================ */
 app.post("/api/sos", async (req, res) => {
   try {
+    if (!isPlainObject(req.body)) {
+      return res.status(400).json({ error: "JSON object body is required" });
+    }
+
     const storage = await getStorage();
     const location = trimText(req.body.location);
     const notes = normalizeOptionalText(req.body.notes);
 
     if (!location) {
       return res.status(400).json({ error: "Location is required" });
+    }
+
+    if (exceedsLength(location, 120) || exceedsLength(notes, 1000)) {
+      return res.status(400).json({ error: "One or more fields exceed allowed length" });
     }
 
     const alert = await storage.createSosAlert({ location, notes });
@@ -198,13 +227,21 @@ app.post("/api/sos", async (req, res) => {
 ================================ */
 app.post("/api/checkin", async (req, res) => {
   try {
+    if (!isPlainObject(req.body)) {
+      return res.status(400).json({ error: "JSON object body is required" });
+    }
+
     const storage = await getStorage();
     const contactName = trimText(req.body.contactName);
     const duration = Number(req.body.duration);
     const notes = normalizeOptionalText(req.body.notes);
 
-    if (!contactName || !Number.isFinite(duration) || duration <= 0) {
+    if (!contactName || !Number.isInteger(duration) || duration <= 0 || duration > 1440) {
       return res.status(400).json({ error: "Contact name and duration are required" });
+    }
+
+    if (exceedsLength(contactName, 120) || exceedsLength(notes, 1000)) {
+      return res.status(400).json({ error: "One or more fields exceed allowed length" });
     }
 
     const checkIn = await storage.createCheckIn({
@@ -224,20 +261,34 @@ app.post("/api/checkin", async (req, res) => {
    GET Routes (Admin View)
 ================================ */
 app.get("/api/sos", async (req, res) => {
-  const storage = await getStorage();
-  const alerts = await storage.listSosAlerts();
-  res.json(alerts);
+  try {
+    const storage = await getStorage();
+    const alerts = await storage.listSosAlerts();
+    res.json(alerts);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch SOS alerts" });
+  }
 });
 
 app.get("/api/checkin", async (req, res) => {
-  const storage = await getStorage();
-  const checkIns = await storage.listCheckIns();
-  res.json(checkIns);
+  try {
+    const storage = await getStorage();
+    const checkIns = await storage.listCheckIns();
+    res.json(checkIns);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch check-ins" });
+  }
 });
 
 // ---------- Driver Onboarding ----------
 app.post("/api/onboarding", async (req, res) => {
   try {
+    if (!isPlainObject(req.body)) {
+      return res.status(400).json({ error: "JSON object body is required" });
+    }
+
     const storage = await getStorage();
     const fullName = trimText(req.body.fullName);
     const email = trimText(req.body.email);
@@ -247,6 +298,31 @@ app.post("/api/onboarding", async (req, res) => {
 
     if (!fullName || !email || !phone) {
       return res.status(400).json({ error: "Full name, email, and phone are required" });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ error: "A valid email is required" });
+    }
+
+    if (!isValidPhone(phone)) {
+      return res.status(400).json({ error: "A valid phone number is required" });
+    }
+
+    if (maxRadius !== null && (maxRadius <= 0 || maxRadius > 500)) {
+      return res.status(400).json({ error: "maxRadius must be an integer between 1 and 500" });
+    }
+
+    if (
+      exceedsLength(fullName, 120) ||
+      exceedsLength(email, 254) ||
+      exceedsLength(phone, 32) ||
+      exceedsLength(availability, 500)
+    ) {
+      return res.status(400).json({ error: "One or more fields exceed allowed length" });
+    }
+
+    if (req.body.maxRadius !== undefined && req.body.maxRadius !== null && req.body.maxRadius !== "" && maxRadius === null) {
+      return res.status(400).json({ error: "maxRadius must be an integer between 1 and 500" });
     }
 
     const newDriver = await storage.createOnboarding({
@@ -269,6 +345,19 @@ app.post("/api/onboarding", async (req, res) => {
 
 app.get("/", (_req, res) => {
   res.sendFile(path.join(rootDir, "index.html"));
+});
+
+app.use((err, _req, res, _next) => {
+  if (err?.type === "entity.parse.failed") {
+    return res.status(400).json({ error: "Invalid JSON body" });
+  }
+
+  if (err?.type === "entity.too.large") {
+    return res.status(413).json({ error: "Request payload too large" });
+  }
+
+  console.error(err);
+  return res.status(500).json({ error: "Internal server error" });
 });
 
 
