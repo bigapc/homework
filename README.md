@@ -32,6 +32,7 @@ Then visit `http://localhost:3000`.
 	- `SUPABASE_URL`
 	- `SUPABASE_ANON_KEY`
 	- `SUPABASE_SERVICE_ROLE_KEY`
+	- `ADMIN_API_KEY`
 2. Redeploy the latest commit.
 3. Verify the API health endpoint:
 
@@ -42,6 +43,16 @@ curl https://<your-production-domain>/api/health
 Expected response includes:
 - `status: "ok"`
 - `storage: "prisma"` or `"fallback"`
+- `adminAuthEnabled: true` when `ADMIN_API_KEY` is configured
+
+## Admin Endpoint Access
+
+The read-only admin endpoints require the `x-admin-api-key` header:
+
+```bash
+curl -H "x-admin-api-key: <your-admin-api-key>" https://<your-production-domain>/api/sos
+curl -H "x-admin-api-key: <your-admin-api-key>" https://<your-production-domain>/api/checkin
+```
 
 ## Notes
 

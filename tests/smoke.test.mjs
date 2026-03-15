@@ -10,6 +10,7 @@ const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, "..");
 const port = 3123;
 const baseUrl = `http://127.0.0.1:${port}`;
+const adminApiKey = "test-admin-key";
 
 let serverProcess;
 let serverLogs = "";
@@ -45,6 +46,7 @@ before(async () => {
       PORT: String(port),
       DATABASE_URL: "",
       DIRECT_URL: "",
+      ADMIN_API_KEY: adminApiKey,
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -74,6 +76,33 @@ test("health endpoint returns ok and valid storage mode", async () => {
   assert.equal(response.status, 200);
   assert.equal(body.status, "ok");
   assert.ok(["prisma", "fallback"].includes(body.storage));
+  assert.equal(body.adminAuthEnabled, true);
+});
+
+test("admin endpoints reject requests without API key", async () => {
+  const sos = await requestJson("/api/sos");
+  const checkIn = await requestJson("/api/checkin");
+
+  assert.equal(sos.response.status, 401);
+  assert.equal(sos.body.error, "Unauthorized");
+  assert.equal(checkIn.response.status, 401);
+  assert.equal(checkIn.body.error, "Unauthorized");
+});
+
+test("admin endpoints allow requests with valid API key", async () => {
+  await requestJson("/api/sos", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ location: "Admin View Location", notes: "Admin list test" }),
+  });
+
+  const { response, body } = await requestJson("/api/sos", {
+    headers: { "x-admin-api-key": adminApiKey },
+  });
+
+  assert.equal(response.status, 200);
+  assert.ok(Array.isArray(body));
+  assert.ok(body.some((entry) => entry.location === "Admin View Location"));
 });
 
 test("SOS endpoint rejects missing location", async () => {

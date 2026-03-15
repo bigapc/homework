@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { timingSafeEqual } from "node:crypto";
 import express from "express";
 import { PrismaClient } from "@prisma/client";
 
@@ -8,6 +9,7 @@ let prisma;
 const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
+const ADMIN_API_KEY = trimText(process.env.ADMIN_API_KEY);
 
 const fallbackStore = {
   mode: "fallback",
@@ -61,6 +63,31 @@ function isValidPhone(value) {
 
 function exceedsLength(value, maxLength) {
   return typeof value === "string" && value.length > maxLength;
+}
+
+function safeTextCompare(left, right) {
+  const leftBuffer = Buffer.from(left, "utf8");
+  const rightBuffer = Buffer.from(right, "utf8");
+
+  if (leftBuffer.length !== rightBuffer.length) {
+    return false;
+  }
+
+  return timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function requireAdminApiKey(req, res, next) {
+  if (!ADMIN_API_KEY) {
+    return res.status(503).json({ error: "Admin API key is not configured" });
+  }
+
+  const providedKey = trimText(req.get("x-admin-api-key"));
+
+  if (!providedKey || !safeTextCompare(providedKey, ADMIN_API_KEY)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  return next();
 }
 
 function createFallbackApi() {
@@ -185,7 +212,7 @@ app.use(express.static(rootDir));
 app.get("/api/health", async (_req, res) => {
   try {
     const storage = await getStorage();
-    res.json({ status: "ok", storage: storage.mode });
+    res.json({ status: "ok", storage: storage.mode, adminAuthEnabled: Boolean(ADMIN_API_KEY) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to read health status" });
@@ -260,7 +287,7 @@ app.post("/api/checkin", async (req, res) => {
 /* ===============================
    GET Routes (Admin View)
 ================================ */
-app.get("/api/sos", async (req, res) => {
+app.get("/api/sos", requireAdminApiKey, async (req, res) => {
   try {
     const storage = await getStorage();
     const alerts = await storage.listSosAlerts();
@@ -271,7 +298,7 @@ app.get("/api/sos", async (req, res) => {
   }
 });
 
-app.get("/api/checkin", async (req, res) => {
+app.get("/api/checkin", requireAdminApiKey, async (req, res) => {
   try {
     const storage = await getStorage();
     const checkIns = await storage.listCheckIns();
