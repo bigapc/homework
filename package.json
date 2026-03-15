@@ -11,6 +11,7 @@
     "dev": "node server/app.js",
     "start": "node server/app.js",
     "test": "node --test tests/*.test.mjs",
+    "smoke:prod": "bash scripts/post-deploy-smoke.sh",
     "lint": "node --check api/index.js server/app.js test-db.js test-db.mjs tests/smoke.test.mjs",
     "typecheck": "sh -c 'if find . -type f -name \"*.ts\" -not -path \"./node_modules/*\" | grep -q .; then tsc --noEmit; else echo \"No TypeScript files to typecheck\"; fi'",
     "postinstall": "prisma generate"

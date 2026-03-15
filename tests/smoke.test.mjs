@@ -297,3 +297,27 @@ test("Server returns 400 for invalid JSON body", async () => {
   assert.equal(response.status, 400);
   assert.equal(body.error, "Invalid JSON body");
 });
+
+test("write endpoints enforce rate limiting", async () => {
+  let seenRateLimit = false;
+
+  for (let i = 0; i < 40; i += 1) {
+    const { response, body } = await requestJson("/api/checkin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contactName: `Rate Limit ${i}`,
+        duration: 5,
+        notes: "rate-limit-test",
+      }),
+    });
+
+    if (response.status === 429) {
+      seenRateLimit = true;
+      assert.equal(body.error, "Too many requests");
+      break;
+    }
+  }
+
+  assert.equal(seenRateLimit, true);
+});

@@ -1,0 +1,80 @@
+name: Uptime Check
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    env:
+      PROD_URL: ${{ vars.PROD_URL || 'https://homework-liart-nine.vercel.app' }}
+
+    steps:
+      - name: Check /api/health
+        id: health
+        run: |
+          set -euo pipefail
+          curl -fsS "${PROD_URL%/}/api/health" > health.json
+          cat health.json
+          HEALTH_JSON="$(cat health.json)" node -e '
+          const payload = JSON.parse(process.env.HEALTH_JSON);
+          if (payload.status !== "ok") {
+            console.error("status is not ok");
+            process.exit(1);
+          }
+          if (payload.storage !== "prisma") {
+            console.error("storage is not prisma");
+            process.exit(1);
+          }
+          if (!payload.adminAuthEnabled) {
+            console.error("adminAuthEnabled is false");
+            process.exit(1);
+          }
+          '
+
+      - name: Create or update alert issue
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'Uptime Alert: SafeConnect health check failed';
+            const body = [
+              'Automated uptime check failed.',
+              '',
+              `Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              `Time (UTC): ${new Date().toISOString()}`,
+              '',
+              `Checked URL: ${(process.env.PROD_URL || '').replace(/\/$/, '')}/api/health`
+            ].join('\n');
+
+            const { owner, repo } = context.repo;
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100,
+            });
+
+            const existing = issues.find((issue) => issue.title === title);
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body,
+              });
+            }

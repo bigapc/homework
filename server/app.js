@@ -10,6 +10,11 @@ const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
 const ADMIN_API_KEY = trimText(process.env.ADMIN_API_KEY);
+const RATE_LIMIT_WINDOW_MS = Number.parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? "", 10);
+const RATE_LIMIT_MAX_WRITES = Number.parseInt(process.env.RATE_LIMIT_MAX_WRITES ?? "", 10);
+const WRITE_RATE_LIMIT_WINDOW_MS = Number.isInteger(RATE_LIMIT_WINDOW_MS) && RATE_LIMIT_WINDOW_MS > 0 ? RATE_LIMIT_WINDOW_MS : 60_000;
+const WRITE_RATE_LIMIT_MAX_WRITES = Number.isInteger(RATE_LIMIT_MAX_WRITES) && RATE_LIMIT_MAX_WRITES > 0 ? RATE_LIMIT_MAX_WRITES : 30;
+const writeRateLimitStore = new Map();
 
 const fallbackStore = {
   mode: "fallback",
@@ -87,6 +92,38 @@ function requireAdminApiKey(req, res, next) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
+  return next();
+}
+
+function applyWriteRateLimit(req, res, next) {
+  const now = Date.now();
+
+  for (const [key, entry] of writeRateLimitStore.entries()) {
+    if (entry.resetAt <= now) {
+      writeRateLimitStore.delete(key);
+    }
+  }
+
+  const clientIp = req.ip || req.socket?.remoteAddress || "unknown";
+  const bucketKey = `${clientIp}:${req.path}`;
+  const entry = writeRateLimitStore.get(bucketKey);
+
+  if (!entry || entry.resetAt <= now) {
+    writeRateLimitStore.set(bucketKey, {
+      count: 1,
+      resetAt: now + WRITE_RATE_LIMIT_WINDOW_MS,
+    });
+
+    return next();
+  }
+
+  if (entry.count >= WRITE_RATE_LIMIT_MAX_WRITES) {
+    const retryAfterSeconds = Math.max(1, Math.ceil((entry.resetAt - now) / 1000));
+    res.set("Retry-After", String(retryAfterSeconds));
+    return res.status(429).json({ error: "Too many requests", retryAfterSeconds });
+  }
+
+  entry.count += 1;
   return next();
 }
 
@@ -206,6 +243,7 @@ async function getStorage() {
   return storagePromise;
 }
 
+app.set("trust proxy", true);
 app.use(express.json({ limit: "100kb" }));
 app.use(express.static(rootDir));
 
@@ -222,7 +260,7 @@ app.get("/api/health", async (_req, res) => {
 /* ===============================
    SOS Alert Route
 ================================ */
-app.post("/api/sos", async (req, res) => {
+app.post("/api/sos", applyWriteRateLimit, async (req, res) => {
   try {
     if (!isPlainObject(req.body)) {
       return res.status(400).json({ error: "JSON object body is required" });
@@ -252,7 +290,7 @@ app.post("/api/sos", async (req, res) => {
 /* ===============================
    Check-In Route
 ================================ */
-app.post("/api/checkin", async (req, res) => {
+app.post("/api/checkin", applyWriteRateLimit, async (req, res) => {
   try {
     if (!isPlainObject(req.body)) {
       return res.status(400).json({ error: "JSON object body is required" });
@@ -310,7 +348,7 @@ app.get("/api/checkin", requireAdminApiKey, async (req, res) => {
 });
 
 // ---------- Driver Onboarding ----------
-app.post("/api/onboarding", async (req, res) => {
+app.post("/api/onboarding", applyWriteRateLimit, async (req, res) => {
   try {
     if (!isPlainObject(req.body)) {
       return res.status(400).json({ error: "JSON object body is required" });

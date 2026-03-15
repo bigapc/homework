@@ -33,6 +33,8 @@ Then visit `http://localhost:3000`.
 	- `SUPABASE_ANON_KEY`
 	- `SUPABASE_SERVICE_ROLE_KEY`
 	- `ADMIN_API_KEY`
+	- `RATE_LIMIT_WINDOW_MS`
+	- `RATE_LIMIT_MAX_WRITES`
 2. Redeploy the latest commit.
 3. Verify the API health endpoint:
 
@@ -45,6 +47,15 @@ Expected response includes:
 - `storage: "prisma"` or `"fallback"`
 - `adminAuthEnabled: true` when `ADMIN_API_KEY` is configured
 
+## Rate Limiting
+
+Write endpoints (`POST /api/sos`, `POST /api/checkin`, `POST /api/onboarding`) are rate-limited per IP.
+
+- `RATE_LIMIT_WINDOW_MS` defaults to `60000`
+- `RATE_LIMIT_MAX_WRITES` defaults to `30`
+
+When the limit is exceeded the API returns `429` with `Retry-After`.
+
 ## Admin Endpoint Access
 
 The read-only admin endpoints require the `x-admin-api-key` header:
@@ -52,6 +63,22 @@ The read-only admin endpoints require the `x-admin-api-key` header:
 ```bash
 curl -H "x-admin-api-key: <your-admin-api-key>" https://<your-production-domain>/api/sos
 curl -H "x-admin-api-key: <your-admin-api-key>" https://<your-production-domain>/api/checkin
+```
+
+## Uptime Monitoring
+
+GitHub Actions runs an uptime check workflow every 5 minutes at [.github/workflows/uptime-check.yml](.github/workflows/uptime-check.yml).
+
+- It checks `GET /api/health`
+- It fails if health is not `ok`, storage is not `prisma`, or admin auth is disabled
+- On failure it creates (or comments on) an alert issue in this repository
+
+## Post-Deploy Smoke Check
+
+Run the production smoke checklist with:
+
+```bash
+PROD_URL=https://<your-production-domain> ADMIN_API_KEY=<your-admin-api-key> npm run smoke:prod
 ```
 
 ## Notes
