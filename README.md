@@ -84,3 +84,5 @@ PROD_URL=https://<your-production-domain> ADMIN_API_KEY=<your-admin-api-key> npm
 ## Notes
 
 If `DATABASE_URL` is unavailable or the generated Prisma client does not match the current SafeConnect API models, the server automatically switches to an in-memory development mode so the frontend and API flows remain usable.
+
+For Supabase pooler URLs (`*.pooler.supabase.com`), the server normalizes Prisma connection parameters to include `pgbouncer=true` and `connection_limit=1` at runtime to avoid prepared statement conflicts in serverless environments.

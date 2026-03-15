@@ -16,6 +16,32 @@ const WRITE_RATE_LIMIT_WINDOW_MS = Number.isInteger(RATE_LIMIT_WINDOW_MS) && RAT
 const WRITE_RATE_LIMIT_MAX_WRITES = Number.isInteger(RATE_LIMIT_MAX_WRITES) && RATE_LIMIT_MAX_WRITES > 0 ? RATE_LIMIT_MAX_WRITES : 30;
 const writeRateLimitStore = new Map();
 
+function normalizeDatabaseUrlForPooler(urlValue) {
+  if (!urlValue || !urlValue.includes("pooler.supabase.com")) {
+    return urlValue;
+  }
+
+  try {
+    const parsed = new URL(urlValue);
+
+    if (!parsed.searchParams.has("pgbouncer")) {
+      parsed.searchParams.set("pgbouncer", "true");
+    }
+
+    if (!parsed.searchParams.has("connection_limit")) {
+      parsed.searchParams.set("connection_limit", "1");
+    }
+
+    return parsed.toString();
+  } catch {
+    return urlValue;
+  }
+}
+
+if (process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = normalizeDatabaseUrlForPooler(process.env.DATABASE_URL);
+}
+
 const fallbackStore = {
   mode: "fallback",
   nextAlertId: 1,
