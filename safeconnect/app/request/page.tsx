@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import TrackingMap from "@/components/TrackingMap"
 import { encryptJson } from "@/lib/safetyCrypto"
 import { getClientEncryptionKeyVersion } from "@/lib/encryptionVersion"
+import PricingQuote, { type PricingResult } from "@/components/PricingQuote"
 
 type Exchange = {
   id: string
@@ -39,6 +40,7 @@ export default function RequestCourier() {
   const [listLoading, setListLoading] = useState(true)
   const [success, setSuccess] = useState("")
   const [error, setError] = useState("")
+  const [quoteResult, setQuoteResult] = useState<PricingResult | null>(null)
   const [myRequests, setMyRequests] = useState<Exchange[]>([])
   const [latestTrackingByRequest, setLatestTrackingByRequest] = useState<Record<string, TrackingPoint>>({})
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false)
@@ -287,8 +289,29 @@ export default function RequestCourier() {
       </div>
 
       {/* Request form */}
+      {/* Real-time pricing quote */}
+      <PricingQuote
+        onQuoteReady={(result) => {
+          setQuoteResult(result)
+          setForm((prev) => ({
+            ...prev,
+            pickup: result.pickup.label,
+            dropoff: result.dropoff.label,
+          }))
+        }}
+      />
+
+      {/* Request form */}
       <form onSubmit={handleSubmit} className="card space-y-5">
-        <h2 className="text-lg font-bold text-safe-900">New Exchange Request</h2>
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-lg font-bold text-safe-900">New Exchange Request</h2>
+          {quoteResult && (
+            <span className="inline-flex items-center gap-1.5 bg-warm-400/15 text-warm-600 text-xs font-semibold px-3 py-1 rounded-full">
+              <span className="text-[10px]">💰</span>
+              Est. ${quoteResult.total.toFixed(2)} · {quoteResult.miles} mi
+            </span>
+          )}
+        </div>
 
         {error   && <div className="alert-error">{error}</div>}
         {success && <div className="alert-success">{success}</div>}
