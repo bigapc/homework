@@ -77,7 +77,8 @@ body {
   }
 
   /* Form inputs */
-  .input {
+  .input,
+  .input-field {
     @apply w-full px-4 py-2.5 rounded-xl border border-safe-200
            bg-white text-safe-900
            placeholder:text-safe-400

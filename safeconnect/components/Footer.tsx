@@ -58,18 +58,18 @@ export default function Footer() {
           <h4 className="text-xs font-semibold uppercase tracking-widest text-safe-500">Resources</h4>
           <ul className="space-y-2 text-sm">
             <li>
-              <Link href="/legal-docs" className="hover:text-white transition-colors">
+              <Link href="/legal-aid" className="hover:text-white transition-colors">
                 Legal Aid Consultation Portal (In Person or Online)
               </Link>
             </li>
             <li>
-              <Link href="/request" className="hover:text-white transition-colors">
+              <Link href="/schedule" className="hover:text-white transition-colors">
                 Scheduling System
               </Link>
             </li>
             <li>
-              <Link href="/legal-docs" className="hover:text-white transition-colors">
-                Courthouse, Government Agencies, and Probation Directory
+              <Link href="/directory" className="hover:text-white transition-colors">
+                Courthouse, Government Agencies &amp; Probation Directory
               </Link>
             </li>
             <li>
@@ -78,8 +78,13 @@ export default function Footer() {
               </a>
             </li>
             <li>
-              <Link href="/legal-docs" className="hover:text-white transition-colors">
+              <Link href="/schedule" className="hover:text-white transition-colors">
                 Book an Appointment with a Legal Attorney
+              </Link>
+            </li>
+            <li>
+              <Link href="/expungement" className="hover:text-white transition-colors">
+                Expungement Support
               </Link>
             </li>
           </ul>
