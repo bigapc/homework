@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 // ─── Pricing constants ────────────────────────────────────────────
@@ -68,6 +69,12 @@ async function fetchRoute(pickup: SelectedLocation, dropoff: SelectedLocation, t
     miles:   Math.round((route.distance / 1609.34) * 100) / 100,
     minutes: Math.round(route.duration / 60),
   }
+}
+
+function buildStaticRoutePreviewUrl(pickup: SelectedLocation, dropoff: SelectedLocation, token: string) {
+  const startPin = `pin-s-a+2f9e44(${pickup.lng},${pickup.lat})`
+  const endPin = `pin-s-b+ef4444(${dropoff.lng},${dropoff.lat})`
+  return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${startPin},${endPin}/auto/880x300?padding=60,40,60,40&access_token=${token}`
 }
 
 // ─── Address input w/ autocomplete ───────────────────────────────
@@ -264,6 +271,30 @@ export default function PricingQuote({ onQuoteReady }: Props) {
       {/* Quote result */}
       {quote && pricing && !fetching && (
         <div className="animate-fade-in space-y-4">
+
+          {/* Map preview */}
+          {pickup && dropoff && token && (
+            <div className="overflow-hidden rounded-xl border border-safe-200 bg-white">
+              <Image
+                src={buildStaticRoutePreviewUrl(pickup, dropoff, token)}
+                alt="Pickup and dropoff route preview"
+                width={880}
+                height={300}
+                className="block h-48 w-full object-cover"
+                unoptimized
+              />
+              <div className="grid grid-cols-1 gap-2 border-t border-safe-100 bg-safe-50 px-4 py-3 text-xs text-safe-600 sm:grid-cols-2">
+                <p className="truncate">
+                  <span className="mr-1 font-semibold text-safe-800">A:</span>
+                  {pickup.label}
+                </p>
+                <p className="truncate">
+                  <span className="mr-1 font-semibold text-safe-800">B:</span>
+                  {dropoff.label}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Route summary strip */}
           <div className="flex flex-wrap items-center gap-4 bg-safe-900 text-white rounded-xl px-5 py-3">

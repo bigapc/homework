@@ -200,10 +200,21 @@ export default function RequestCourier() {
       return
     }
 
+    const quoteSnapshot = quoteResult
+      ? [
+          "Quote Snapshot:",
+          `Estimated total: $${quoteResult.total.toFixed(2)}`,
+          `Estimated miles: ${quoteResult.miles} mi`,
+          `Estimated drive time: ${quoteResult.minutes} min`,
+          "",
+        ]
+      : []
+
     const fullItemsDescription = [
       `Requested by: ${form.name}`,
       `Contact: ${form.contact}`,
       "",
+      ...quoteSnapshot,
       form.items,
     ].join("\n")
 
@@ -271,6 +282,7 @@ export default function RequestCourier() {
       items: "",
       encryptionPasscode: "",
     })
+    setQuoteResult(null)
     await loadMyRequests()
     setLoading(false)
   }
