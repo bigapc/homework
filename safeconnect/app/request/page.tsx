@@ -41,6 +41,7 @@ export default function RequestCourier() {
   const [success, setSuccess] = useState("")
   const [error, setError] = useState("")
   const [quoteResult, setQuoteResult] = useState<PricingResult | null>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [myRequests, setMyRequests] = useState<Exchange[]>([])
   const [latestTrackingByRequest, setLatestTrackingByRequest] = useState<Record<string, TrackingPoint>>({})
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false)
@@ -55,10 +56,15 @@ export default function RequestCourier() {
     } = await supabase.auth.getUser()
 
     if (authError || !user) {
+      setIsAuthenticated(false)
+      setMyRequests([])
+      setLatestTrackingByRequest({})
+      setLastUpdatedAt(null)
       setListLoading(false)
-      router.push("/login")
       return
     }
+
+    setIsAuthenticated(true)
 
     const { data, error: fetchError } = await supabase
       .from("exchanges")
@@ -107,13 +113,17 @@ export default function RequestCourier() {
     setLatestTrackingByRequest(latestByRequest)
     setLastUpdatedAt(new Date())
     setListLoading(false)
-  }, [router])
+  }, [])
 
   useEffect(() => {
     loadMyRequests()
   }, [loadMyRequests])
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      return
+    }
+
     const intervalId = window.setInterval(() => {
       if (document.visibilityState === "visible") {
         loadMyRequests()
@@ -121,7 +131,7 @@ export default function RequestCourier() {
     }, 15000)
 
     return () => window.clearInterval(intervalId)
-  }, [loadMyRequests])
+  }, [isAuthenticated, loadMyRequests])
 
   useEffect(() => {
     let mounted = true
@@ -133,6 +143,9 @@ export default function RequestCourier() {
       } = await supabase.auth.getUser()
 
       if (!mounted || !user) {
+        if (mounted) {
+          setIsRealtimeConnected(false)
+        }
         return
       }
 
@@ -181,8 +194,9 @@ export default function RequestCourier() {
     } = await supabase.auth.getUser()
 
     if (authError || !user) {
+      setError("Sign in to submit your request securely. Your pricing quote will still be available before sign-in.")
       setLoading(false)
-      router.push("/login")
+      router.push("/login?from=/request")
       return
     }
 
@@ -287,6 +301,22 @@ export default function RequestCourier() {
           <p className="text-xs mt-0.5">Your name and contact details are never shared with the other party.</p>
         </div>
       </div>
+
+      {isAuthenticated === false && (
+        <div className="card border border-warm-200 bg-warm-50/70">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-safe-900">Instant pricing is open to visitors.</p>
+              <p className="text-xs text-safe-600 mt-1">
+                Enter pickup and dropoff to get a live mileage quote now. Sign in only when you&apos;re ready to submit and track the request.
+              </p>
+            </div>
+            <Link href="/login?from=/request" className="btn-secondary whitespace-nowrap">
+              Sign In To Book
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Request form */}
       {/* Real-time pricing quote */}
@@ -404,6 +434,7 @@ export default function RequestCourier() {
       </form>
 
       {/* My Requests panel */}
+      {isAuthenticated ? (
       <div className="card space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-bold text-safe-900">My Requests</h2>
@@ -483,6 +514,18 @@ export default function RequestCourier() {
           </div>
         )}
       </div>
+      ) : (
+      <div className="card space-y-3">
+        <h2 className="text-lg font-bold text-safe-900">Track Requests After Sign-In</h2>
+        <p className="text-sm text-safe-500">
+          Sign in to save your courier booking, view live request status, and monitor assigned courier updates.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <Link href="/login?from=/request" className="btn-primary">Sign In</Link>
+          <Link href="/signup" className="btn-secondary">Create Account</Link>
+        </div>
+      </div>
+      )}
     </div>
   )
 }
