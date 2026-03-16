@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
 import { getServerRouteSupabase } from "@/lib/serverRouteSupabase"
+import { getMissingRequiredEnv } from "@/lib/env"
 
 export const runtime = "nodejs"
 
@@ -10,6 +11,16 @@ type CreateCheckoutBody = {
 }
 
 export async function POST(request: Request) {
+  const missingStripeEnv = getMissingRequiredEnv("stripe-checkout")
+  if (missingStripeEnv.length > 0) {
+    return NextResponse.json(
+      {
+        error: `Stripe checkout is not configured. Missing env vars: ${missingStripeEnv.join(", ")}`,
+      },
+      { status: 503 }
+    )
+  }
+
   const supabase = getServerRouteSupabase()
 
   if (!supabase) {
@@ -24,11 +35,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const stripeSecret = process.env.STRIPE_SECRET_KEY
-
-  if (!stripeSecret) {
-    return NextResponse.json({ error: "Stripe is not configured." }, { status: 503 })
-  }
+  const stripeSecret = process.env.STRIPE_SECRET_KEY as string
 
   const body = (await request.json().catch(() => ({}))) as CreateCheckoutBody
   const exchangeId = body.exchangeId

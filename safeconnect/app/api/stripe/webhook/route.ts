@@ -1,16 +1,23 @@
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
 import { getServerAdminSupabase } from "@/lib/serverAdminSupabase"
+import { getMissingRequiredEnv } from "@/lib/env"
 
 export const runtime = "nodejs"
 
 export async function POST(request: Request) {
-  const stripeSecret = process.env.STRIPE_SECRET_KEY
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
-
-  if (!stripeSecret || !webhookSecret) {
-    return NextResponse.json({ error: "Stripe webhook is not configured." }, { status: 503 })
+  const missingWebhookEnv = getMissingRequiredEnv("stripe-webhook")
+  if (missingWebhookEnv.length > 0) {
+    return NextResponse.json(
+      {
+        error: `Stripe webhook is not configured. Missing env vars: ${missingWebhookEnv.join(", ")}`,
+      },
+      { status: 503 }
+    )
   }
+
+  const stripeSecret = process.env.STRIPE_SECRET_KEY as string
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET as string
 
   const signature = request.headers.get("stripe-signature")
 

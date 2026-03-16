@@ -33,6 +33,10 @@ Then visit `http://localhost:3000`.
 	- `SUPABASE_ANON_KEY`
 	- `SUPABASE_SERVICE_ROLE_KEY`
 	- `ADMIN_API_KEY`
+	- `TWILIO_ACCOUNT_SID`
+	- `TWILIO_AUTH_TOKEN`
+	- `TWILIO_FROM_NUMBER` (E.164 format, for example `+15551234567`)
+	- `NOTIFICATIONS_CRON_SECRET`
 	- `RATE_LIMIT_WINDOW_MS`
 	- `RATE_LIMIT_MAX_WRITES`
 2. Redeploy the latest commit.
@@ -46,6 +50,26 @@ Expected response includes:
 - `status: "ok"`
 - `storage: "prisma"` or `"fallback"`
 - `adminAuthEnabled: true` when `ADMIN_API_KEY` is configured
+- `env.twilioConfigured: true` when Twilio credentials are configured
+- `env.notificationsCronConfigured: true` when notification processing auth is configured
+
+## Twilio SMS Setup
+
+1. Add the following values to local `.env` and your Vercel environment variables:
+	- `TWILIO_ACCOUNT_SID`
+	- `TWILIO_AUTH_TOKEN`
+	- `TWILIO_FROM_NUMBER`
+2. If you use the notifications processing endpoint manually or via a cron job, include:
+	- `NOTIFICATIONS_CRON_SECRET`
+3. Trigger message processing with your auth header:
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer <your-notifications-cron-secret>" \
+  https://<your-production-domain>/api/notifications/process
+```
+
+If Twilio values are missing, message processing will fail with `Twilio credentials are not configured.`
 
 ## Rate Limiting
 
