@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation"
 import ProtectedRoute from "@/components/ProtectedRoute"
 import { supabase } from "@/lib/supabase"
 import { getCurrentUser } from "@/lib/auth"
+import { exchangeQuoteSelectFields, isMissingExchangeQuoteColumnsError } from "@/lib/exchangeQuote"
 
 type Exchange = {
   id: string
@@ -12,6 +13,11 @@ type Exchange = {
   dropoff: string
   status: "pending" | "assigned" | "completed"
   created_at: string
+  quoted_total_cents: number | null
+  quoted_distance_miles: number | null
+  quoted_duration_minutes: number | null
+  service_window_mode: "asap" | "scheduled" | null
+  requested_service_at: string | null
 }
 
 type ExchangePayment = {
@@ -52,7 +58,7 @@ function PaymentsPageContent() {
     const [{ data: exchangeRows, error: exchangeError }, { data: paymentRows, error: paymentError }] = await Promise.all([
       supabase
         .from("exchanges")
-        .select("id,pickup,dropoff,status,created_at")
+        .select(`id,pickup,dropoff,status,created_at,${exchangeQuoteSelectFields}`)
         .eq("user_id", user.id)
         .order("created_at", { ascending: false }),
       supabase
@@ -62,13 +68,27 @@ function PaymentsPageContent() {
         .order("created_at", { ascending: false }),
     ])
 
-    if (exchangeError || paymentError) {
-      setError(exchangeError?.message || paymentError?.message || "Unable to load payment data.")
+    let safeExchangeRows: unknown = exchangeRows
+    let safeExchangeError = exchangeError
+
+    if (safeExchangeError && isMissingExchangeQuoteColumnsError(safeExchangeError.message)) {
+      const fallbackExchangeRes = await supabase
+        .from("exchanges")
+        .select("id,pickup,dropoff,status,created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+
+      safeExchangeRows = fallbackExchangeRes.data
+      safeExchangeError = fallbackExchangeRes.error
+    }
+
+    if (safeExchangeError || paymentError) {
+      setError(safeExchangeError?.message || paymentError?.message || "Unable to load payment data.")
       setLoading(false)
       return
     }
 
-    const safeExchanges = (exchangeRows ?? []) as Exchange[]
+    const safeExchanges = ((safeExchangeRows ?? []) as unknown[]) as Exchange[]
     setExchanges(safeExchanges)
     setPayments((paymentRows ?? []) as ExchangePayment[])
 
@@ -97,6 +117,12 @@ function PaymentsPageContent() {
     () => exchanges.find((item) => item.id === selectedExchangeId) ?? null,
     [exchanges, selectedExchangeId]
   )
+
+  useEffect(() => {
+    if (selectedExchange?.quoted_total_cents) {
+      setAmount((selectedExchange.quoted_total_cents / 100).toFixed(2))
+    }
+  }, [selectedExchangeId, selectedExchange])
 
   const createPayment = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -197,7 +223,20 @@ function PaymentsPageContent() {
 
             {selectedExchange && (
               <div className="rounded-xl border border-safe-100 bg-safe-50 px-4 py-3 text-sm text-safe-700">
-                Paying for exchange #{selectedExchange.id.slice(0, 8).toUpperCase()} ({selectedExchange.status})
+                <p>Paying for exchange #{selectedExchange.id.slice(0, 8).toUpperCase()} ({selectedExchange.status})</p>
+                {selectedExchange.quoted_total_cents ? (
+                  <p className="mt-1 text-safe-900 font-medium">
+                    Quoted total: ${(selectedExchange.quoted_total_cents / 100).toFixed(2)}
+                    {selectedExchange.quoted_distance_miles ? ` · ${selectedExchange.quoted_distance_miles} mi · ${selectedExchange.quoted_duration_minutes ?? 0} min` : ""}
+                  </p>
+                ) : null}
+                {selectedExchange.service_window_mode ? (
+                  <p className="mt-1 text-xs text-safe-500">
+                    {selectedExchange.service_window_mode === "scheduled" && selectedExchange.requested_service_at
+                      ? `Scheduled ${new Date(selectedExchange.requested_service_at).toLocaleString()}`
+                      : "ASAP request"}
+                  </p>
+                ) : null}
               </div>
             )}
 

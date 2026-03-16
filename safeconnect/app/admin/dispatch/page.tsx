@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import ProtectedRoute from "@/components/ProtectedRoute"
 import { supabase } from "@/lib/supabase"
+import { exchangeQuoteSelectFields, isMissingExchangeQuoteColumnsError } from "@/lib/exchangeQuote"
 
 type Courier = {
   id: string
@@ -17,6 +18,14 @@ type Exchange = {
   dropoff: string
   status: "pending" | "assigned" | "completed"
   created_at: string
+  service_window_mode: "asap" | "scheduled" | null
+  requested_service_at: string | null
+  quoted_distance_miles: number | null
+  quoted_duration_minutes: number | null
+  quoted_total_cents: number | null
+  quoted_is_after_hours: boolean
+  quoted_is_weekend: boolean
+  quoted_is_high_risk: boolean
 }
 
 type DispatchEvent = {
@@ -45,7 +54,7 @@ function AdminDispatchContent() {
       supabase.from("users").select("id,email").eq("role", "courier").order("email", { ascending: true }),
       supabase
         .from("exchanges")
-        .select("id,user_id,courier_id,pickup,dropoff,status,created_at")
+        .select(`id,user_id,courier_id,pickup,dropoff,status,created_at,${exchangeQuoteSelectFields}`)
         .order("created_at", { ascending: false })
         .limit(50),
       supabase
@@ -55,14 +64,28 @@ function AdminDispatchContent() {
         .limit(50),
     ])
 
-    if (courierRes.error || exchangeRes.error || eventRes.error) {
-      setError(courierRes.error?.message || exchangeRes.error?.message || eventRes.error?.message || "Unable to load dispatch data.")
+    let safeExchangeData: unknown = exchangeRes.data
+    let safeExchangeError = exchangeRes.error
+
+    if (safeExchangeError && isMissingExchangeQuoteColumnsError(safeExchangeError.message)) {
+      const fallbackExchangeRes = await supabase
+        .from("exchanges")
+        .select("id,user_id,courier_id,pickup,dropoff,status,created_at")
+        .order("created_at", { ascending: false })
+        .limit(50)
+
+      safeExchangeData = fallbackExchangeRes.data
+      safeExchangeError = fallbackExchangeRes.error
+    }
+
+    if (courierRes.error || safeExchangeError || eventRes.error) {
+      setError(courierRes.error?.message || safeExchangeError?.message || eventRes.error?.message || "Unable to load dispatch data.")
       setLoading(false)
       return
     }
 
     setCouriers((courierRes.data ?? []) as Courier[])
-    setExchanges((exchangeRes.data ?? []) as Exchange[])
+    setExchanges(((safeExchangeData ?? []) as unknown[]) as Exchange[])
     setEvents((eventRes.data ?? []) as DispatchEvent[])
     setLoading(false)
   }, [])
@@ -189,6 +212,30 @@ function AdminDispatchContent() {
                     <span className="badge-active capitalize">{exchange.status}</span>
                   </div>
                   <p className="text-xs text-safe-500">{exchange.pickup} to {exchange.dropoff}</p>
+                  {(exchange.quoted_total_cents || exchange.quoted_distance_miles || exchange.requested_service_at) && (
+                    <div className="flex flex-wrap gap-2 text-[11px] font-medium">
+                      {exchange.quoted_total_cents ? (
+                        <span className="rounded-full bg-warm-100 px-2.5 py-1 text-warm-800">
+                          Quote ${ (exchange.quoted_total_cents / 100).toFixed(2) }
+                        </span>
+                      ) : null}
+                      {exchange.quoted_distance_miles ? (
+                        <span className="rounded-full bg-safe-100 px-2.5 py-1 text-safe-700">
+                          {exchange.quoted_distance_miles} mi · {exchange.quoted_duration_minutes ?? 0} min
+                        </span>
+                      ) : null}
+                      {exchange.service_window_mode ? (
+                        <span className="rounded-full bg-blue-100 px-2.5 py-1 text-blue-800">
+                          {exchange.service_window_mode === "scheduled" && exchange.requested_service_at
+                            ? `Scheduled ${new Date(exchange.requested_service_at).toLocaleString()}`
+                            : "ASAP"}
+                        </span>
+                      ) : null}
+                      {exchange.quoted_is_after_hours ? <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-800">After-hours</span> : null}
+                      {exchange.quoted_is_weekend ? <span className="rounded-full bg-sky-100 px-2.5 py-1 text-sky-800">Weekend</span> : null}
+                      {exchange.quoted_is_high_risk ? <span className="rounded-full bg-rose-100 px-2.5 py-1 text-rose-800">High-risk</span> : null}
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-2">
                     <select

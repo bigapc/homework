@@ -8,6 +8,7 @@ import TrackingMap from "@/components/TrackingMap"
 import { encryptJson } from "@/lib/safetyCrypto"
 import { getClientEncryptionKeyVersion } from "@/lib/encryptionVersion"
 import PricingQuote, { type PricingResult } from "@/components/PricingQuote"
+import { buildExchangeQuoteColumns, isMissingExchangeQuoteColumnsError } from "@/lib/exchangeQuote"
 
 type Exchange = {
   id: string
@@ -15,6 +16,9 @@ type Exchange = {
   dropoff: string
   status: "pending" | "assigned" | "completed"
   created_at: string
+  quoted_total_cents?: number | null
+  quoted_distance_miles?: number | null
+  quoted_duration_minutes?: number | null
 }
 
 type TrackingPoint = {
@@ -240,6 +244,10 @@ export default function RequestCourier() {
       encryption_key_version: encryptionKeyVersion,
     }
 
+    if (quoteResult) {
+      Object.assign(payload, buildExchangeQuoteColumns(quoteResult))
+    }
+
     if (form.encryptionPasscode.trim().length >= 6) {
       const encrypted = await encryptJson(
         { items: fullItemsDescription },
@@ -263,6 +271,34 @@ export default function RequestCourier() {
       insertError = retry.error ?? null
     }
 
+    if (insertError && isMissingExchangeQuoteColumnsError(insertError.message)) {
+      const withoutQuoteColumns = { ...payload }
+
+      delete withoutQuoteColumns.service_window_mode
+      delete withoutQuoteColumns.requested_service_at
+      delete withoutQuoteColumns.quoted_distance_miles
+      delete withoutQuoteColumns.quoted_duration_minutes
+      delete withoutQuoteColumns.quoted_base_rate_cents
+      delete withoutQuoteColumns.quoted_mileage_cents
+      delete withoutQuoteColumns.quoted_after_hours_cents
+      delete withoutQuoteColumns.quoted_weekend_cents
+      delete withoutQuoteColumns.quoted_high_risk_cents
+      delete withoutQuoteColumns.quoted_fuel_surcharge_cents
+      delete withoutQuoteColumns.quoted_service_fee_cents
+      delete withoutQuoteColumns.quoted_total_cents
+      delete withoutQuoteColumns.quoted_is_after_hours
+      delete withoutQuoteColumns.quoted_is_weekend
+      delete withoutQuoteColumns.quoted_is_high_risk
+      delete withoutQuoteColumns.quoted_at
+
+      const retry = await supabase.from("exchanges").insert(withoutQuoteColumns)
+      insertError = retry.error ?? null
+
+      if (!insertError && quoteResult) {
+        successMessage = "Request submitted, but dedicated quote columns are not enabled yet. Apply Supabase migration 014 to persist quote analytics fields."
+      }
+    }
+
     if (insertError && payload.items_encrypted) {
       const fallback = await supabase.from("exchanges").insert({
         user_id: user.id,
@@ -270,9 +306,26 @@ export default function RequestCourier() {
         dropoff: form.dropoff,
         items: fullItemsDescription,
         status: "pending",
+        ...(quoteResult ? buildExchangeQuoteColumns(quoteResult) : {}),
       })
 
       insertError = fallback.error ?? null
+
+      if (insertError && isMissingExchangeQuoteColumnsError(insertError.message)) {
+        const fallbackWithoutQuote = await supabase.from("exchanges").insert({
+          user_id: user.id,
+          pickup: form.pickup,
+          dropoff: form.dropoff,
+          items: fullItemsDescription,
+          status: "pending",
+        })
+
+        insertError = fallbackWithoutQuote.error ?? null
+
+        if (!insertError && quoteResult) {
+          successMessage = "Request submitted, but dedicated quote columns are not enabled yet. Apply Supabase migration 014 to persist quote analytics fields."
+        }
+      }
 
       if (!insertError) {
         successMessage = "Request submitted, but encrypted item storage is not enabled yet. Apply Phase 3 DB migration 011."

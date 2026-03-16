@@ -64,12 +64,16 @@ export type PricingResult = {
   miles:   number
   total:   number
   minutes: number
+  serviceWindowMode: "asap" | "scheduled"
+  requestedServiceAt: string | null
   requestTimingLabel: string
   breakdown: {
+    baseRate: number
     mileage: number
     afterHours: number
     weekend: number
     highRiskFee: number
+    fuelSurcharge: number
     svcFee: number
     total: number
     isWeekend: boolean
@@ -276,12 +280,16 @@ export default function PricingQuote({ onQuoteReady }: Props) {
       miles: quote.miles,
       total: pricing.total,
       minutes: quote.minutes,
+      serviceWindowMode: serviceMode,
+      requestedServiceAt: serviceMode === "scheduled" && scheduledAt ? new Date(scheduledAt).toISOString() : null,
       requestTimingLabel,
       breakdown: {
+        baseRate: BASE_RATE,
         mileage: pricing.mileage,
         afterHours: pricing.afterHours,
         weekend: pricing.weekend,
         highRiskFee: pricing.highRiskFee,
+        fuelSurcharge: FUEL_SURCHARGE,
         svcFee: pricing.svcFee,
         total: pricing.total,
         isWeekend: pricing.isWeekend,
@@ -289,7 +297,7 @@ export default function PricingQuote({ onQuoteReady }: Props) {
         isHighRisk: pricing.isHighRisk,
       },
     })
-  }, [pickup, dropoff, quote, pricing, requestTimingLabel, onQuoteReady])
+  }, [pickup, dropoff, quote, pricing, requestTimingLabel, serviceMode, scheduledAt, onQuoteReady])
 
   return (
     <div className="card space-y-6 border-warm-400/30 bg-gradient-to-br from-white to-safe-50">

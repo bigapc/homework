@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { exchangeQuoteSelectFields, isMissingExchangeQuoteColumnsError } from "@/lib/exchangeQuote"
 
 type Courier = {
   id: string
@@ -17,6 +18,14 @@ type Exchange = {
   created_at: string
   user_id: string
   courier_id: string | null
+  service_window_mode: "asap" | "scheduled" | null
+  requested_service_at: string | null
+  quoted_distance_miles: number | null
+  quoted_duration_minutes: number | null
+  quoted_total_cents: number | null
+  quoted_is_after_hours: boolean
+  quoted_is_weekend: boolean
+  quoted_is_high_risk: boolean
 }
 
 export default function AdminPage() {
@@ -64,19 +73,33 @@ export default function AdminPage() {
       supabase.from("users").select("id,email").eq("role", "courier").order("email", { ascending: true }),
       supabase
         .from("exchanges")
-        .select("id,pickup,dropoff,status,created_at,user_id,courier_id")
+        .select(`id,pickup,dropoff,status,created_at,user_id,courier_id,${exchangeQuoteSelectFields}`)
         .eq("status", "pending")
         .order("created_at", { ascending: false }),
     ])
 
-    if (courierError || exchangeError) {
-      setError(courierError?.message || exchangeError?.message || "Failed to load admin data")
+    let safeExchangeRows: unknown = exchangeRows
+    let safeExchangeError = exchangeError
+
+    if (safeExchangeError && isMissingExchangeQuoteColumnsError(safeExchangeError.message)) {
+      const fallbackExchangeRes = await supabase
+        .from("exchanges")
+        .select("id,pickup,dropoff,status,created_at,user_id,courier_id")
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+
+      safeExchangeRows = fallbackExchangeRes.data
+      safeExchangeError = fallbackExchangeRes.error
+    }
+
+    if (courierError || safeExchangeError) {
+      setError(courierError?.message || safeExchangeError?.message || "Failed to load admin data")
       setReady(true)
       return
     }
 
     setCouriers((courierRows ?? []) as Courier[])
-    setPendingExchanges((exchangeRows ?? []) as Exchange[])
+    setPendingExchanges(((safeExchangeRows ?? []) as unknown[]) as Exchange[])
     setReady(true)
   }, [router])
 
@@ -130,6 +153,20 @@ export default function AdminPage() {
               <h2 className="text-lg font-semibold">Request #{exchange.id.slice(0, 8)}</h2>
               <p><strong>Pickup:</strong> {exchange.pickup}</p>
               <p><strong>Dropoff:</strong> {exchange.dropoff}</p>
+              {(exchange.quoted_total_cents || exchange.quoted_distance_miles || exchange.requested_service_at) && (
+                <div className="rounded-xl border border-safe-100 bg-safe-50 px-4 py-3 text-sm text-safe-700 space-y-1">
+                  {exchange.quoted_total_cents ? <p><strong>Quoted Total:</strong> ${(exchange.quoted_total_cents / 100).toFixed(2)}</p> : null}
+                  {exchange.quoted_distance_miles ? <p><strong>Route:</strong> {exchange.quoted_distance_miles} mi · {exchange.quoted_duration_minutes ?? 0} min</p> : null}
+                  {exchange.service_window_mode ? (
+                    <p><strong>Service Window:</strong> {exchange.service_window_mode === "scheduled" && exchange.requested_service_at ? new Date(exchange.requested_service_at).toLocaleString() : "ASAP"}</p>
+                  ) : null}
+                  <div className="flex flex-wrap gap-2 pt-1 text-xs font-medium">
+                    {exchange.quoted_is_after_hours ? <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-800">After-hours</span> : null}
+                    {exchange.quoted_is_weekend ? <span className="rounded-full bg-sky-100 px-2 py-1 text-sky-800">Weekend</span> : null}
+                    {exchange.quoted_is_high_risk ? <span className="rounded-full bg-rose-100 px-2 py-1 text-rose-800">High-risk</span> : null}
+                  </div>
+                </div>
+              )}
 
               <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
                 <select
