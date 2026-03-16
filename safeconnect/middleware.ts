@@ -3,7 +3,6 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
 const PROTECTED_ROUTES = [
-  "/request",
   "/safety-plan",
   "/courier",
   "/dashboard",
@@ -17,10 +16,6 @@ const PROTECTED_ROUTES = [
 function getRequiredRole(pathname: string): "survivor" | "courier" | "admin" | null {
   if (pathname.startsWith("/dashboard")) {
     return null
-  }
-
-  if (pathname.startsWith("/request")) {
-    return "survivor"
   }
 
   if (pathname.startsWith("/safety-plan/share")) {
@@ -131,7 +126,6 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/request/:path*",
     "/safety-plan/:path*",
     "/courier/:path*",
     "/dashboard/:path*",
