@@ -203,9 +203,21 @@ export default function RequestCourier() {
     const quoteSnapshot = quoteResult
       ? [
           "Quote Snapshot:",
+          `Requested timing: ${quoteResult.requestTimingLabel}`,
           `Estimated total: $${quoteResult.total.toFixed(2)}`,
           `Estimated miles: ${quoteResult.miles} mi`,
           `Estimated drive time: ${quoteResult.minutes} min`,
+          `Mileage charge: $${quoteResult.breakdown.mileage.toFixed(2)}`,
+          `Service fee: $${quoteResult.breakdown.svcFee.toFixed(2)}`,
+          ...(quoteResult.breakdown.afterHours > 0
+            ? [`After-hours surcharge: $${quoteResult.breakdown.afterHours.toFixed(2)}`]
+            : []),
+          ...(quoteResult.breakdown.weekend > 0
+            ? [`Weekend surcharge: $${quoteResult.breakdown.weekend.toFixed(2)}`]
+            : []),
+          ...(quoteResult.breakdown.highRiskFee > 0
+            ? [`High-risk handling: $${quoteResult.breakdown.highRiskFee.toFixed(2)}`]
+            : []),
           "",
         ]
       : []

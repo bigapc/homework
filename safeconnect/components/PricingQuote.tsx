@@ -8,13 +8,42 @@ const BASE_RATE      = 12.00   // flat base per exchange
 const PER_MILE_RATE  = 2.50    // per road mile
 const FUEL_SURCHARGE = 1.25    // flat fuel fee
 const SERVICE_FEE    = 0.12    // 12% of subtotal
+const AFTER_HOURS_SURCHARGE = 12.00
+const WEEKEND_SURCHARGE = 8.00
+const HIGH_RISK_SURCHARGE = 15.00
 
-function calcPricing(miles: number) {
+function getOperationalFlags(requestedAt: Date) {
+  const day = requestedAt.getDay()
+  const hour = requestedAt.getHours()
+
+  return {
+    isWeekend: day === 0 || day === 6,
+    isAfterHours: hour < 8 || hour >= 18,
+  }
+}
+
+function calcPricing(miles: number, requestedAt: Date, highRisk: boolean) {
+  const { isWeekend, isAfterHours } = getOperationalFlags(requestedAt)
   const mileage   = miles * PER_MILE_RATE
-  const subtotal  = BASE_RATE + mileage
-  const svcFee    = subtotal * SERVICE_FEE
-  const total     = subtotal + svcFee + FUEL_SURCHARGE
-  return { mileage, subtotal, svcFee, total }
+  const afterHours = isAfterHours ? AFTER_HOURS_SURCHARGE : 0
+  const weekend = isWeekend ? WEEKEND_SURCHARGE : 0
+  const highRiskFee = highRisk ? HIGH_RISK_SURCHARGE : 0
+  const subtotalBeforeServiceFee = BASE_RATE + mileage + afterHours + weekend + highRiskFee
+  const svcFee = subtotalBeforeServiceFee * SERVICE_FEE
+  const total = subtotalBeforeServiceFee + svcFee + FUEL_SURCHARGE
+
+  return {
+    mileage,
+    afterHours,
+    weekend,
+    highRiskFee,
+    subtotalBeforeServiceFee,
+    svcFee,
+    total,
+    isWeekend,
+    isAfterHours,
+    isHighRisk: highRisk,
+  }
 }
 
 // ─── Types ────────────────────────────────────────────────────────
@@ -35,6 +64,18 @@ export type PricingResult = {
   miles:   number
   total:   number
   minutes: number
+  requestTimingLabel: string
+  breakdown: {
+    mileage: number
+    afterHours: number
+    weekend: number
+    highRiskFee: number
+    svcFee: number
+    total: number
+    isWeekend: boolean
+    isAfterHours: boolean
+    isHighRisk: boolean
+  }
 }
 
 type Props = {
@@ -188,6 +229,9 @@ export default function PricingQuote({ onQuoteReady }: Props) {
   const [pickupLabel, setPickupLabel]   = useState("")
   const [dropoffLabel, setDropoffLabel] = useState("")
   const [quote, setQuote]   = useState<{ miles: number; minutes: number } | null>(null)
+  const [serviceMode, setServiceMode] = useState<"asap" | "scheduled">("asap")
+  const [scheduledAt, setScheduledAt] = useState("")
+  const [highRisk, setHighRisk] = useState(false)
   const [fetching, setFetching] = useState(false)
   const [routeError, setRouteError] = useState("")
 
@@ -203,15 +247,8 @@ export default function PricingQuote({ onQuoteReady }: Props) {
       return
     }
     setQuote(route)
-    onQuoteReady?.({
-      pickup,
-      dropoff,
-      miles:   route.miles,
-      total:   calcPricing(route.miles).total,
-      minutes: route.minutes,
-    })
     setFetching(false)
-  }, [pickup, dropoff, token, onQuoteReady])
+  }, [pickup, dropoff, token])
 
   // auto-fetch when both locations are selected
   useEffect(() => {
@@ -219,7 +256,40 @@ export default function PricingQuote({ onQuoteReady }: Props) {
     else setQuote(null)
   }, [pickup, dropoff, getQuote])
 
-  const pricing = quote ? calcPricing(quote.miles) : null
+  const hasTimingSelection = serviceMode === "asap" || scheduledAt.length > 0
+  const requestedAt = serviceMode === "scheduled" && scheduledAt
+    ? new Date(scheduledAt)
+    : new Date()
+  const requestTimingLabel = serviceMode === "scheduled" && scheduledAt
+    ? new Date(scheduledAt).toLocaleString()
+    : "ASAP / Now"
+  const pricing = quote && hasTimingSelection ? calcPricing(quote.miles, requestedAt, highRisk) : null
+
+  useEffect(() => {
+    if (!pickup || !dropoff || !quote || !pricing) {
+      return
+    }
+
+    onQuoteReady?.({
+      pickup,
+      dropoff,
+      miles: quote.miles,
+      total: pricing.total,
+      minutes: quote.minutes,
+      requestTimingLabel,
+      breakdown: {
+        mileage: pricing.mileage,
+        afterHours: pricing.afterHours,
+        weekend: pricing.weekend,
+        highRiskFee: pricing.highRiskFee,
+        svcFee: pricing.svcFee,
+        total: pricing.total,
+        isWeekend: pricing.isWeekend,
+        isAfterHours: pricing.isAfterHours,
+        isHighRisk: pricing.isHighRisk,
+      },
+    })
+  }, [pickup, dropoff, quote, pricing, requestTimingLabel, onQuoteReady])
 
   return (
     <div className="card space-y-6 border-warm-400/30 bg-gradient-to-br from-white to-safe-50">
@@ -255,6 +325,51 @@ export default function PricingQuote({ onQuoteReady }: Props) {
         />
       </div>
 
+      {/* Pricing conditions */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1fr]">
+        <div>
+          <label className="block text-xs font-semibold text-safe-400 mb-1.5 uppercase tracking-wide">
+            Requested Service Window
+          </label>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[160px_1fr]">
+            <select
+              value={serviceMode}
+              onChange={(e) => setServiceMode(e.target.value as "asap" | "scheduled")}
+              className="input"
+            >
+              <option value="asap">ASAP / Immediate</option>
+              <option value="scheduled">Scheduled</option>
+            </select>
+
+            <input
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={(e) => setScheduledAt(e.target.value)}
+              disabled={serviceMode !== "scheduled"}
+              className="input disabled:bg-safe-100 disabled:text-safe-400"
+            />
+          </div>
+          <p className="mt-1 text-[11px] text-safe-500">
+            After-hours requests from 6:00 PM to 8:00 AM and weekend requests automatically add operational surcharges.
+          </p>
+        </div>
+
+        <label className="rounded-xl border border-safe-200 bg-white px-4 py-3 flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={highRisk}
+            onChange={(e) => setHighRisk(e.target.checked)}
+            className="mt-1 h-4 w-4 accent-warm-400"
+          />
+          <div>
+            <p className="text-sm font-semibold text-safe-900">High-risk or sensitive retrieval</p>
+            <p className="text-[11px] leading-relaxed text-safe-500">
+              Adds enhanced handling, safety coordination, and dispatch review for volatile pickup conditions.
+            </p>
+          </div>
+        </label>
+      </div>
+
       {/* Loading state */}
       {fetching && (
         <div className="flex items-center gap-2 text-sm text-safe-500">
@@ -266,6 +381,12 @@ export default function PricingQuote({ onQuoteReady }: Props) {
       {/* Error */}
       {routeError && (
         <div className="alert-error text-sm">{routeError}</div>
+      )}
+
+      {!hasTimingSelection && quote && !fetching && (
+        <div className="alert-info text-sm">
+          Select a scheduled date and time to calculate the final quote with time-based surcharges.
+        </div>
       )}
 
       {/* Quote result */}
@@ -308,10 +429,28 @@ export default function PricingQuote({ onQuoteReady }: Props) {
               <p className="text-xl font-bold">{quote.minutes} <span className="text-sm font-normal text-safe-300">min</span></p>
             </div>
             <div className="w-px h-8 bg-safe-700 hidden sm:block" />
+            <div className="text-center">
+              <p className="text-[10px] uppercase tracking-widest text-safe-400">Service Window</p>
+              <p className="text-sm font-semibold">{serviceMode === "scheduled" ? "Scheduled" : "ASAP"}</p>
+            </div>
+            <div className="w-px h-8 bg-safe-700 hidden sm:block" />
             <div className="text-center ml-auto">
               <p className="text-[10px] uppercase tracking-widest text-warm-400">Total Estimate</p>
               <p className="text-3xl font-black text-warm-400">${pricing.total.toFixed(2)}</p>
             </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 text-[11px] font-medium">
+            <span className="rounded-full bg-safe-100 px-3 py-1 text-safe-700">Timing: {requestTimingLabel}</span>
+            {pricing.isAfterHours && (
+              <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-800">After-hours surcharge</span>
+            )}
+            {pricing.isWeekend && (
+              <span className="rounded-full bg-blue-100 px-3 py-1 text-blue-800">Weekend surcharge</span>
+            )}
+            {pricing.isHighRisk && (
+              <span className="rounded-full bg-rose-100 px-3 py-1 text-rose-800">High-risk handling</span>
+            )}
           </div>
 
           {/* Fare breakdown */}
@@ -324,6 +463,24 @@ export default function PricingQuote({ onQuoteReady }: Props) {
               <span className="text-safe-600">Mileage ({quote.miles} mi × ${PER_MILE_RATE}/mi)</span>
               <span className="font-medium text-safe-900">${pricing.mileage.toFixed(2)}</span>
             </div>
+            {pricing.afterHours > 0 && (
+              <div className="px-4 py-2.5 flex justify-between border-b border-safe-100">
+                <span className="text-safe-600">After-hours operations</span>
+                <span className="font-medium text-safe-900">${pricing.afterHours.toFixed(2)}</span>
+              </div>
+            )}
+            {pricing.weekend > 0 && (
+              <div className="px-4 py-2.5 flex justify-between border-b border-safe-100">
+                <span className="text-safe-600">Weekend dispatch coverage</span>
+                <span className="font-medium text-safe-900">${pricing.weekend.toFixed(2)}</span>
+              </div>
+            )}
+            {pricing.highRiskFee > 0 && (
+              <div className="px-4 py-2.5 flex justify-between border-b border-safe-100">
+                <span className="text-safe-600">High-risk handling</span>
+                <span className="font-medium text-safe-900">${pricing.highRiskFee.toFixed(2)}</span>
+              </div>
+            )}
             <div className="px-4 py-2.5 flex justify-between border-b border-safe-100">
               <span className="text-safe-600">Fuel surcharge</span>
               <span className="font-medium text-safe-900">${FUEL_SURCHARGE.toFixed(2)}</span>
@@ -350,6 +507,7 @@ export default function PricingQuote({ onQuoteReady }: Props) {
               setPickup(null); setDropoff(null)
               setPickupLabel(""); setDropoffLabel("")
               setQuote(null); setRouteError("")
+              setServiceMode("asap"); setScheduledAt(""); setHighRisk(false)
             }}
             className="text-xs text-safe-500 hover:text-safe-800 underline"
           >
