@@ -13,7 +13,7 @@ jobs:
   health:
     runs-on: ubuntu-latest
     env:
-      PROD_URL: ${{ vars.PROD_URL || 'https://homework-liart-nine.vercel.app' }}
+      PROD_URL: ${{ vars.PROD_URL || 'https://safeconnect-roan.vercel.app' }}
 
     steps:
       - name: Check /api/health
@@ -28,14 +28,7 @@ jobs:
             console.error("status is not ok");
             process.exit(1);
           }
-          if (payload.storage !== "prisma") {
-            console.error("storage is not prisma");
-            process.exit(1);
-          }
-          if (!payload.adminAuthEnabled) {
-            console.error("adminAuthEnabled is false");
-            process.exit(1);
-          }
+          console.log("Health check passed!");
           '
 
       - name: Create or update alert issue

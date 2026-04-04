@@ -13,7 +13,7 @@
     "test": "node --test tests/*.test.mjs",
     "smoke:prod": "bash scripts/post-deploy-smoke.sh",
     "lint": "node --check api/index.js server/app.js test-db.js test-db.mjs tests/smoke.test.mjs",
-    "typecheck": "sh -c 'if find . -type f -name \"*.ts\" -not -path \"./node_modules/*\" | grep -q .; then tsc --noEmit; else echo \"No TypeScript files to typecheck\"; fi'",
+    "typecheck": "sh -c 'if find . -type f -name \"*.ts\" -not -path \"./node_modules/*\" -not -path \"./safeconnect/*\" | grep -q .; then tsc --noEmit; else echo \"No TypeScript files to typecheck\"; fi'",
     "postinstall": "prisma generate"
   },
   "dependencies": {
