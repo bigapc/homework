@@ -3,7 +3,11 @@ import Navbar from "@/components/Navbar"
 import Footer from "@/components/Footer"
 import { assertRequiredEnv } from "@/lib/env"
 
-if (process.env.NODE_ENV === "production" || process.env.STRICT_ENV_VALIDATION === "1") {
+// Skip during `next build` (NEXT_PHASE = "phase-production-build"); validate at runtime only
+if (
+  (process.env.NODE_ENV === "production" || process.env.STRICT_ENV_VALIDATION === "1") &&
+  process.env.NEXT_PHASE !== "phase-production-build"
+) {
   assertRequiredEnv("startup", "SafeConnect startup")
 }
 
