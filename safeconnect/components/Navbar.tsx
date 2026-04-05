@@ -100,17 +100,33 @@ export default function Navbar() {
 
       setEmail(user.email ?? "")
 
-      const { data: userRow } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", user.id)
-        .single()
+      let resolvedRole: UserRole = null
+
+      try {
+        const response = await fetch("/api/auth/session", {
+          method: "GET",
+          cache: "no-store",
+        })
+
+        if (response.ok) {
+          const payload = (await response.json()) as {
+            user: { id: string } | null
+            role: UserRole
+          }
+
+          if (payload.user?.id === user.id) {
+            resolvedRole = payload.role ?? null
+          }
+        }
+      } catch {
+        resolvedRole = null
+      }
 
       if (!mounted) {
         return
       }
 
-      setRole((userRow?.role ?? null) as UserRole)
+      setRole(resolvedRole)
       setLoading(false)
     }
 

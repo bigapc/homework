@@ -3,6 +3,11 @@ import { supabase } from "@/lib/supabase"
 
 export type UserRole = "survivor" | "courier" | "admin" | null
 
+type SessionPayload = {
+  user: { id: string; email: string | null } | null
+  role: UserRole
+}
+
 export function getDashboardPathForRole(role: UserRole) {
   if (role === "survivor") {
     return "/request"
@@ -33,32 +38,45 @@ export async function getCurrentUser(): Promise<User | null> {
 }
 
 export async function getCurrentUserRole(userId?: string): Promise<UserRole> {
-  const resolvedUserId = userId ?? (await getCurrentUser())?.id
+  const { user, role } = await getCurrentUserWithRole()
 
-  if (!resolvedUserId) {
+  if (!user) {
     return null
   }
 
-  const { data, error } = await supabase
-    .from("users")
-    .select("role")
-    .eq("id", resolvedUserId)
-    .single()
-
-  if (error) {
+  if (userId && user.id !== userId) {
     return null
   }
 
-  return (data?.role ?? null) as UserRole
+  return role
 }
 
 export async function getCurrentUserWithRole() {
-  const user = await getCurrentUser()
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
 
-  if (!user) {
+  if (error || !user) {
     return { user: null, role: null as UserRole }
   }
 
-  const role = await getCurrentUserRole(user.id)
-  return { user, role }
+  try {
+    const response = await fetch("/api/auth/session", {
+      method: "GET",
+      cache: "no-store",
+    })
+
+    if (response.ok) {
+      const payload = (await response.json()) as SessionPayload
+
+      if (payload.user?.id === user.id) {
+        return { user, role: payload.role ?? null }
+      }
+    }
+  } catch {
+    // Fall back to auth-only state when role lookup fails.
+  }
+
+  return { user, role: null as UserRole }
 }
