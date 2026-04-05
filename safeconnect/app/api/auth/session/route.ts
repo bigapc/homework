@@ -6,17 +6,24 @@ export const runtime = "nodejs"
 
 type UserRole = "survivor" | "courier" | "admin" | null
 
-export async function GET() {
+export async function GET(request: Request) {
   const routeSupabase = getServerRouteSupabase()
 
   if (!routeSupabase) {
     return NextResponse.json({ error: "Server auth client unavailable." }, { status: 503 })
   }
 
+  const authHeader = request.headers.get("authorization")
+  const bearerToken = authHeader?.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7).trim()
+    : null
+
   const {
     data: { user },
     error: authError,
-  } = await routeSupabase.auth.getUser()
+  } = bearerToken
+    ? await routeSupabase.auth.getUser(bearerToken)
+    : await routeSupabase.auth.getUser()
 
   if (authError || !user) {
     return NextResponse.json({ user: null, role: null as UserRole })

@@ -62,9 +62,19 @@ export async function getCurrentUserWithRole() {
   }
 
   try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    const headers: Record<string, string> = {}
+    if (session?.access_token) {
+      headers.Authorization = `Bearer ${session.access_token}`
+    }
+
     const response = await fetch("/api/auth/session", {
       method: "GET",
       cache: "no-store",
+      headers,
     })
 
     if (response.ok) {
