@@ -4,13 +4,39 @@ import Image from "next/image"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 // ─── Pricing constants ────────────────────────────────────────────
-const BASE_RATE      = 12.00   // flat base per exchange
-const PER_MILE_RATE  = 2.50    // per road mile
+const PER_MILE_RATE  = 2.50    // per road mile after base radius
 const FUEL_SURCHARGE = 1.25    // flat fuel fee
 const SERVICE_FEE    = 0.12    // 12% of subtotal
-const AFTER_HOURS_SURCHARGE = 12.00
-const WEEKEND_SURCHARGE = 8.00
-const HIGH_RISK_SURCHARGE = 15.00
+const AFTER_HOURS_SURCHARGE = 57.50  // Priority/Same-Day surcharge
+const WEEKEND_SURCHARGE = 57.50      // Priority/Same-Day surcharge
+const HIGH_RISK_SURCHARGE = 75.00    // High-Risk/Sensitive Handling
+
+// Vehicle type configurations - updated for conflict-safe logistics pricing
+const VEHICLE_TYPES = {
+  standard: {
+    name: "Standard Exchange",
+    description: "Basic pickup + dropoff service - Same city",
+    baseRate: 100.00,
+    maxItems: "2-3 items",
+  },
+  premium: {
+    name: "Premium Exchange",
+    description: "Enhanced care for valuables - Priority handling",
+    baseRate: 125.00,
+    maxItems: "2-3 items",
+  },
+  xl: {
+    name: "XL Exchange",
+    description: "Large items or multiple packages - Extended capacity",
+    baseRate: 150.00,
+    maxItems: "5+ items",
+  },
+} as const
+
+type VehicleType = keyof typeof VEHICLE_TYPES
+
+export { VEHICLE_TYPES }
+export type { VehicleType }
 
 function getOperationalFlags(requestedAt: Date) {
   const day = requestedAt.getDay()
@@ -22,17 +48,19 @@ function getOperationalFlags(requestedAt: Date) {
   }
 }
 
-function calcPricing(miles: number, requestedAt: Date, highRisk: boolean) {
+function calcPricing(miles: number, requestedAt: Date, highRisk: boolean, vehicleType: VehicleType = 'standard') {
   const { isWeekend, isAfterHours } = getOperationalFlags(requestedAt)
+  const baseRate = VEHICLE_TYPES[vehicleType].baseRate
   const mileage   = miles * PER_MILE_RATE
   const afterHours = isAfterHours ? AFTER_HOURS_SURCHARGE : 0
   const weekend = isWeekend ? WEEKEND_SURCHARGE : 0
   const highRiskFee = highRisk ? HIGH_RISK_SURCHARGE : 0
-  const subtotalBeforeServiceFee = BASE_RATE + mileage + afterHours + weekend + highRiskFee
+  const subtotalBeforeServiceFee = baseRate + mileage + afterHours + weekend + highRiskFee
   const svcFee = subtotalBeforeServiceFee * SERVICE_FEE
   const total = subtotalBeforeServiceFee + svcFee + FUEL_SURCHARGE
 
   return {
+    baseRate,
     mileage,
     afterHours,
     weekend,
@@ -43,6 +71,7 @@ function calcPricing(miles: number, requestedAt: Date, highRisk: boolean) {
     isWeekend,
     isAfterHours,
     isHighRisk: highRisk,
+    vehicleType,
   }
 }
 
@@ -67,6 +96,7 @@ export type PricingResult = {
   serviceWindowMode: "asap" | "scheduled"
   requestedServiceAt: string | null
   requestTimingLabel: string
+  vehicleType: VehicleType
   breakdown: {
     baseRate: number
     mileage: number
@@ -79,6 +109,7 @@ export type PricingResult = {
     isWeekend: boolean
     isAfterHours: boolean
     isHighRisk: boolean
+    vehicleType: VehicleType
   }
 }
 
@@ -236,6 +267,7 @@ export default function PricingQuote({ onQuoteReady }: Props) {
   const [serviceMode, setServiceMode] = useState<"asap" | "scheduled">("asap")
   const [scheduledAt, setScheduledAt] = useState("")
   const [highRisk, setHighRisk] = useState(false)
+  const [vehicleType, setVehicleType] = useState<VehicleType>('standard')
   const [fetching, setFetching] = useState(false)
   const [routeError, setRouteError] = useState("")
 
@@ -267,7 +299,7 @@ export default function PricingQuote({ onQuoteReady }: Props) {
   const requestTimingLabel = serviceMode === "scheduled" && scheduledAt
     ? new Date(scheduledAt).toLocaleString()
     : "ASAP / Now"
-  const pricing = quote && hasTimingSelection ? calcPricing(quote.miles, requestedAt, highRisk) : null
+  const pricing = quote && hasTimingSelection ? calcPricing(quote.miles, requestedAt, highRisk, vehicleType) : null
 
   useEffect(() => {
     if (!pickup || !dropoff || !quote || !pricing) {
@@ -283,8 +315,9 @@ export default function PricingQuote({ onQuoteReady }: Props) {
       serviceWindowMode: serviceMode,
       requestedServiceAt: serviceMode === "scheduled" && scheduledAt ? new Date(scheduledAt).toISOString() : null,
       requestTimingLabel,
+      vehicleType,
       breakdown: {
-        baseRate: BASE_RATE,
+        baseRate: pricing.baseRate,
         mileage: pricing.mileage,
         afterHours: pricing.afterHours,
         weekend: pricing.weekend,
@@ -295,9 +328,10 @@ export default function PricingQuote({ onQuoteReady }: Props) {
         isWeekend: pricing.isWeekend,
         isAfterHours: pricing.isAfterHours,
         isHighRisk: pricing.isHighRisk,
+        vehicleType: pricing.vehicleType,
       },
     })
-  }, [pickup, dropoff, quote, pricing, requestTimingLabel, serviceMode, scheduledAt, onQuoteReady])
+  }, [pickup, dropoff, quote, pricing, requestTimingLabel, serviceMode, scheduledAt, vehicleType, onQuoteReady])
 
   return (
     <div className="card space-y-6 border-warm-400/30 bg-gradient-to-br from-white to-safe-50">
@@ -311,6 +345,13 @@ export default function PricingQuote({ onQuoteReady }: Props) {
           <h2 className="text-lg font-bold text-safe-900">Real-Time Pricing Quote</h2>
           <p className="text-xs text-safe-500">Enter pickup and dropoff to get an instant fare estimate.</p>
         </div>
+      </div>
+
+      <div className="rounded-3xl border border-safe-200 bg-safe-50 p-4 text-sm text-safe-700 mt-5">
+        <p className="font-semibold text-safe-900">SafeConnect Commercial & Business Services</p>
+        <p className="mt-2 leading-relaxed">
+          Private, secure, and optional courier services for companies that need trusted transport for valuables, relocation, job separation logistics, and delivery exchanges. Our mission is safety first—for staff, customers, and every handoff.
+        </p>
       </div>
 
       {/* Address inputs */}
@@ -362,20 +403,42 @@ export default function PricingQuote({ onQuoteReady }: Props) {
           </p>
         </div>
 
-        <label className="rounded-xl border border-safe-200 bg-white px-4 py-3 flex items-start gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={highRisk}
-            onChange={(e) => setHighRisk(e.target.checked)}
-            className="mt-1 h-4 w-4 accent-warm-400"
-          />
+        <div className="space-y-3">
           <div>
-            <p className="text-sm font-semibold text-safe-900">High-risk or sensitive retrieval</p>
-            <p className="text-[11px] leading-relaxed text-safe-500">
-              Adds enhanced handling, safety coordination, and dispatch review for volatile pickup conditions.
+            <label className="block text-xs font-semibold text-safe-400 mb-1.5 uppercase tracking-wide">
+              Vehicle Type
+            </label>
+            <select
+              value={vehicleType}
+              onChange={(e) => setVehicleType(e.target.value as VehicleType)}
+              className="input w-full"
+            >
+              {Object.entries(VEHICLE_TYPES).map(([key, config]) => (
+                <option key={key} value={key}>
+                  {config.name} - ${config.baseRate.toFixed(2)} base
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-[11px] text-safe-500">
+              {VEHICLE_TYPES[vehicleType].description} • {VEHICLE_TYPES[vehicleType].maxItems}
             </p>
           </div>
-        </label>
+
+          <label className="rounded-xl border border-safe-200 bg-white px-4 py-3 flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={highRisk}
+              onChange={(e) => setHighRisk(e.target.checked)}
+              className="mt-1 h-4 w-4 accent-warm-400"
+            />
+            <div>
+              <p className="text-sm font-semibold text-safe-900">High-risk or sensitive retrieval</p>
+              <p className="text-[11px] leading-relaxed text-safe-500">
+                Adds enhanced handling, safety coordination, and dispatch review for volatile pickup conditions.
+              </p>
+            </div>
+          </label>
+        </div>
       </div>
 
       {/* Loading state */}
@@ -464,8 +527,12 @@ export default function PricingQuote({ onQuoteReady }: Props) {
           {/* Fare breakdown */}
           <div className="bg-white border border-safe-100 rounded-xl overflow-hidden text-sm">
             <div className="px-4 py-2.5 flex justify-between border-b border-safe-100">
+              <span className="text-safe-600">Vehicle type</span>
+              <span className="font-medium text-safe-900 capitalize">{VEHICLE_TYPES[pricing.vehicleType].name}</span>
+            </div>
+            <div className="px-4 py-2.5 flex justify-between border-b border-safe-100">
               <span className="text-safe-600">Base rate</span>
-              <span className="font-medium text-safe-900">${BASE_RATE.toFixed(2)}</span>
+              <span className="font-medium text-safe-900">${pricing.baseRate.toFixed(2)}</span>
             </div>
             <div className="px-4 py-2.5 flex justify-between border-b border-safe-100">
               <span className="text-safe-600">Mileage ({quote.miles} mi × ${PER_MILE_RATE}/mi)</span>

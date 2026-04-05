@@ -192,6 +192,73 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── Commercial Services ───────────────────────────────────── */}
+      <section className="section-container">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-safe-900 via-safe-800 to-safe-700 text-white p-8 sm:p-12">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -top-16 -right-16 w-72 h-72 rounded-full opacity-10"
+            style={{ background: "radial-gradient(circle, #e4b05a 0%, transparent 70%)" }}
+          />
+          <div className="relative max-w-4xl space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-warm-400/20 text-warm-500 text-lg font-bold">
+                🏢
+              </div>
+              <div>
+                <p className="text-warm-400 text-xs font-semibold uppercase tracking-widest">For Businesses</p>
+                <h2 className="text-3xl font-bold">SafeConnect Commercial Services</h2>
+              </div>
+            </div>
+
+            <p className="text-safe-200 leading-relaxed text-lg">
+              Private, secure, and optional courier services for companies that prioritize safety and trust.
+              Our mission is safety first—for staff, customers, and every handoff.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                {
+                  icon: "💎",
+                  title: "Valuables Transport",
+                  desc: "Secure transport of high-value items, documents, and sensitive materials with full chain-of-custody tracking.",
+                },
+                {
+                  icon: "🏠",
+                  title: "Relocation Logistics",
+                  desc: "Trusted courier support for employee relocations, office moves, and property exchanges.",
+                },
+                {
+                  icon: "🤝",
+                  title: "Job Separation Services",
+                  desc: "Professional, neutral courier assistance for returning company property during employee transitions.",
+                },
+                {
+                  icon: "📦",
+                  title: "Delivery Exchanges",
+                  desc: "Confidential delivery and exchange services for business-to-business transactions and contracts.",
+                },
+              ].map(({ icon, title, desc }) => (
+                <div key={title} className="bg-safe-800/50 border border-safe-700/50 rounded-2xl p-5 space-y-3 hover:bg-safe-800/70 transition-colors">
+                  <div className="text-2xl">{icon}</div>
+                  <h4 className="font-semibold text-white text-sm">{title}</h4>
+                  <p className="text-xs text-safe-300 leading-relaxed">{desc}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap gap-3 pt-2">
+              <Link href="/request" className="btn-accent">
+                Request Commercial Service
+              </Link>
+              <Link href="#how-it-works" className="btn-ghost text-white hover:bg-safe-800">
+                Learn How It Works →
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── CTA ──────────────────────────────────────────────────── */}
       <section className="bg-warm-400">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-14 text-center space-y-6">

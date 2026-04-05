@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 import TrackingMap from "@/components/TrackingMap"
 import { encryptJson } from "@/lib/safetyCrypto"
 import { getClientEncryptionKeyVersion } from "@/lib/encryptionVersion"
-import PricingQuote, { type PricingResult } from "@/components/PricingQuote"
+import PricingQuote, { type PricingResult, VEHICLE_TYPES } from "@/components/PricingQuote"
 import { buildExchangeQuoteColumns, isMissingExchangeQuoteColumnsError } from "@/lib/exchangeQuote"
 
 type Exchange = {
@@ -45,10 +45,10 @@ export default function RequestCourier() {
   const [success, setSuccess] = useState("")
   const [error, setError] = useState("")
   const [quoteResult, setQuoteResult] = useState<PricingResult | null>(null)
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [myRequests, setMyRequests] = useState<Exchange[]>([])
   const [latestTrackingByRequest, setLatestTrackingByRequest] = useState<Record<string, TrackingPoint>>({})
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null)
 
   const loadMyRequests = useCallback(async () => {
@@ -207,10 +207,12 @@ export default function RequestCourier() {
     const quoteSnapshot = quoteResult
       ? [
           "Quote Snapshot:",
+          `Vehicle: ${quoteResult.vehicleType} (${VEHICLE_TYPES[quoteResult.vehicleType]?.name || quoteResult.vehicleType})`,
           `Requested timing: ${quoteResult.requestTimingLabel}`,
           `Estimated total: $${quoteResult.total.toFixed(2)}`,
           `Estimated miles: ${quoteResult.miles} mi`,
           `Estimated drive time: ${quoteResult.minutes} min`,
+          `Base rate: $${quoteResult.breakdown.baseRate.toFixed(2)}`,
           `Mileage charge: $${quoteResult.breakdown.mileage.toFixed(2)}`,
           `Service fee: $${quoteResult.breakdown.svcFee.toFixed(2)}`,
           ...(quoteResult.breakdown.afterHours > 0
@@ -242,6 +244,7 @@ export default function RequestCourier() {
       status: "pending",
       items_encrypted: false,
       encryption_key_version: encryptionKeyVersion,
+      vehicle_type: quoteResult?.vehicleType || 'standard',
     }
 
     if (quoteResult) {

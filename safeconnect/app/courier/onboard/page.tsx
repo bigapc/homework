@@ -45,12 +45,36 @@ export default function CourierOnboarding() {
     city: "",
     state: "",
     vehicle: "",
+    vehicleType: "",
+    serviceRadius: "25",
+    commutRadius: "50",
     motivation: "",
     consent: false,
   })
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState("")
+  const [geoLocation, setGeoLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [fetchingLocation, setFetchingLocation] = useState(false)
+
+  const requestGeolocation = async () => {
+    if (!navigator.geolocation) {
+      setError("Geolocation is not supported on this device.")
+      return
+    }
+    setFetchingLocation(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGeoLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setFetchingLocation(false)
+        setError("")
+      },
+      () => {
+        setError("Could not access your location. Please enable location permissions.")
+        setFetchingLocation(false)
+      }
+    )
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -58,18 +82,37 @@ export default function CourierOnboarding() {
       setError("Please consent to the background check to proceed.")
       return
     }
+    if (!form.vehicleType) {
+      setError("Please select a vehicle type.")
+      return
+    }
+    if (!geoLocation) {
+      setError("Please enable location access to submit your application.")
+      return
+    }
     setSubmitting(true)
     setError("")
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
     const { error: dbError } = await supabase.from("courier_applications").insert({
-      first_name:  form.firstName,
-      last_name:   form.lastName,
-      email:       form.email,
-      phone:       form.phone,
-      city:        form.city,
-      state:       form.state,
-      vehicle:     form.vehicle,
-      motivation:  form.motivation,
+      user_id: user?.id ?? null,
+      first_name: form.firstName,
+      last_name: form.lastName,
+      email: form.email,
+      phone: form.phone,
+      city: form.city,
+      state: form.state,
+      vehicle: form.vehicle,
+      vehicle_type: form.vehicleType,
+      service_radius_miles: parseInt(form.serviceRadius) || 25,
+      willing_to_commute_miles: parseInt(form.commutRadius) || 50,
+      latitude: geoLocation.lat,
+      longitude: geoLocation.lng,
+      background_check_consent: form.consent,
+      motivation: form.motivation,
     })
 
     if (dbError) {
@@ -117,7 +160,6 @@ export default function CourierOnboarding() {
 
   return (
     <div className="space-y-0 animate-fade-in">
-
       {/* Hero */}
       <section className="bg-safe-900 text-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16 sm:py-20 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -127,8 +169,7 @@ export default function CourierOnboarding() {
               Now Accepting Couriers
             </div>
             <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight">
-              Become a SafeConnect{" "}
-              <span className="text-warm-400">Courier</span>
+              Become a SafeConnect <span className="text-warm-400">Courier</span>
             </h1>
             <p className="text-safe-200 text-lg leading-relaxed max-w-lg">
               Help survivors safely recover their belongings — no confrontation, no risk.
@@ -190,27 +231,45 @@ export default function CourierOnboarding() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="label">First Name</label>
-                <input className="input" placeholder="Jane" required
+                <input
+                  className="input"
+                  placeholder="Jane"
+                  required
                   value={form.firstName}
-                  onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
+                  onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                />
               </div>
               <div>
                 <label className="label">Last Name</label>
-                <input className="input" placeholder="Smith" required
+                <input
+                  className="input"
+                  placeholder="Smith"
+                  required
                   value={form.lastName}
-                  onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
+                  onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                />
               </div>
               <div>
                 <label className="label">Email Address</label>
-                <input className="input" type="email" placeholder="jane@example.com" required
+                <input
+                  className="input"
+                  type="email"
+                  placeholder="jane@example.com"
+                  required
                   value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                />
               </div>
               <div>
                 <label className="label">Phone Number</label>
-                <input className="input" type="tel" placeholder="(555) 000-0000" required
+                <input
+                  className="input"
+                  type="tel"
+                  placeholder="(555) 000-0000"
+                  required
                   value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                />
               </div>
             </div>
           </div>
@@ -221,21 +280,96 @@ export default function CourierOnboarding() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="sm:col-span-2">
                 <label className="label">City</label>
-                <input className="input" placeholder="Austin" required
+                <input
+                  className="input"
+                  placeholder="Austin"
+                  required
                   value={form.city}
-                  onChange={(e) => setForm({ ...form, city: e.target.value })} />
+                  onChange={(e) => setForm({ ...form, city: e.target.value })}
+                />
               </div>
               <div>
                 <label className="label">State</label>
-                <input className="input" placeholder="TX" maxLength={2} required
+                <input
+                  className="input"
+                  placeholder="TX"
+                  maxLength={2}
+                  required
                   value={form.state}
-                  onChange={(e) => setForm({ ...form, state: e.target.value.toUpperCase() })} />
+                  onChange={(e) => setForm({ ...form, state: e.target.value.toUpperCase() })}
+                />
               </div>
               <div className="sm:col-span-3">
-                <label className="label">Vehicle / Transport Type</label>
-                <input className="input" placeholder="2019 Toyota Camry / Rideshare / Bicycle" required
+                <label className="label">Vehicle Description</label>
+                <input
+                  className="input"
+                  placeholder="2019 Toyota Camry / Rideshare / Bicycle"
+                  required
                   value={form.vehicle}
-                  onChange={(e) => setForm({ ...form, vehicle: e.target.value })} />
+                  onChange={(e) => setForm({ ...form, vehicle: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Vehicle type & service area */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-safe-400 mb-3">Vehicle Type &amp; Service Area</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="label">Vehicle Type *</label>
+                <select
+                  className="input"
+                  value={form.vehicleType}
+                  onChange={(e) => setForm({ ...form, vehicleType: e.target.value })}
+                  required>
+                  <option value="">Select vehicle type</option>
+                  <option value="car">Car</option>
+                  <option value="truck">Truck</option>
+                  <option value="van">Van</option>
+                  <option value="motorcycle">Motorcycle</option>
+                  <option value="bicycle">Bicycle</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">Service Radius (miles) *</label>
+                <input
+                  className="input"
+                  type="number"
+                  placeholder="25"
+                  min="5"
+                  max="100"
+                  required
+                  value={form.serviceRadius}
+                  onChange={(e) => setForm({ ...form, serviceRadius: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="label">Willing to Commute (miles) *</label>
+                <input
+                  className="input"
+                  type="number"
+                  placeholder="50"
+                  min="5"
+                  max="200"
+                  required
+                  value={form.commutRadius}
+                  onChange={(e) => setForm({ ...form, commutRadius: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="label">Service Location *</label>
+                <button
+                  type="button"
+                  onClick={requestGeolocation}
+                  disabled={fetchingLocation}
+                  className="btn-secondary text-sm px-3 py-2 w-full">
+                  {fetchingLocation
+                    ? "Getting location..."
+                    : geoLocation
+                      ? `📍 Set (${geoLocation.lat.toFixed(4)}, ${geoLocation.lng.toFixed(4)})`
+                      : "📍 Use Current Location"}
+                </button>
               </div>
             </div>
           </div>
@@ -243,11 +377,13 @@ export default function CourierOnboarding() {
           {/* Motivation */}
           <div>
             <label className="label">Why do you want to be a SafeConnect courier?</label>
-            <textarea className="input min-h-[100px] resize-y"
+            <textarea
+              className="input min-h-[100px] resize-y"
               placeholder="Tell us briefly why you'd like to join and any relevant experience…"
               required
               value={form.motivation}
-              onChange={(e) => setForm({ ...form, motivation: e.target.value })} />
+              onChange={(e) => setForm({ ...form, motivation: e.target.value })}
+            />
           </div>
 
           {/* Consent */}
@@ -265,11 +401,7 @@ export default function CourierOnboarding() {
             </label>
           </div>
 
-          <button
-            type="submit"
-            disabled={submitting || !form.consent}
-            className="btn-primary w-full text-base py-3"
-          >
+          <button type="submit" disabled={submitting || !form.consent} className="btn-primary w-full text-base py-3">
             {submitting ? (
               <span className="flex items-center gap-2">
                 <span className="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
@@ -279,13 +411,6 @@ export default function CourierOnboarding() {
               "Submit Application"
             )}
           </button>
-
-          <p className="text-xs text-center text-safe-400">
-            Already approved?{" "}
-            <Link href="/login" className="underline text-safe-600 hover:text-safe-900">
-              Sign in to your courier account →
-            </Link>
-          </p>
         </form>
       </section>
     </div>

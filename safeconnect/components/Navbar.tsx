@@ -45,7 +45,10 @@ const mainServices: NavItem[] = [
 
 const toolLinks: NavItem[] = [
   { href: "/request", label: "Pricing Calculator", icon: Calculator },
-  { href: "/courier", label: "Courier Dashboard", icon: Truck, roles: ["courier"] },
+  { href: "/courier/dashboard", label: "Courier Dashboard", icon: Truck, roles: ["courier"] },
+  { href: "/courier/assignments", label: "Assignments", icon: ClipboardList, roles: ["courier"] },
+  { href: "/courier/tracking", label: "Live Tracking", icon: Phone, roles: ["courier"] },
+  { href: "/courier/profile", label: "Profile", icon: UserPlus, roles: ["courier"] },
   { href: "/courier/onboard", label: "Courier Onboarding", icon: UserPlus },
   { href: "/incident-log", label: "Incident Log", icon: ClipboardList, roles: ["survivor"] },
   { href: "/legal-docs", label: "Secure Files", icon: FileText, roles: ["survivor"] },
@@ -54,7 +57,9 @@ const toolLinks: NavItem[] = [
 
 const adminLinks: NavItem[] = [
   { href: "/admin", label: "Admin", icon: Settings, roles: ["admin"] },
-  { href: "/admin/dispatch", label: "Dispatch", icon: Truck, roles: ["admin"] },
+  { href: "/dispatcher", label: "Dispatcher Base", icon: Truck, roles: ["admin"] },
+  { href: "/admin/couriers", label: "Courier Review", icon: UserPlus, roles: ["admin"] },
+  { href: "/admin/partnerships", label: "Partnerships", icon: Building2, roles: ["admin"] },
   { href: "/admin/review", label: "Review", icon: ClipboardList, roles: ["admin"] },
   { href: "/admin/encryption", label: "Encryption", icon: KeyRound, roles: ["admin"] },
 ]

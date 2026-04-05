@@ -100,6 +100,38 @@ export async function POST(request: Request) {
               currency: session.currency || "usd",
             },
           })
+
+          // Update exchange status to completed and calculate courier payout
+          const payoutCents = Math.round((session.amount_total || 0) * 0.65)
+          await supabase
+            .from("exchanges")
+            .update({
+              status: "completed",
+              courier_payout_cents: payoutCents,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", exchangeId)
+
+          // Notify courier if assigned
+          const { data: exchangeWithCourier } = await supabase
+            .from("exchanges")
+            .select("courier_id")
+            .eq("id", exchangeId)
+            .single()
+
+          if (exchangeWithCourier?.courier_id) {
+            await supabase.from("notification_events").insert({
+              user_id: exchangeWithCourier.courier_id,
+              exchange_id: exchange.id,
+              channel: "sms",
+              recipient: "pending-courier-number", // Will be resolved by notification processor
+              template: "job_completed_courier",
+              payload: {
+                exchangeId: exchange.id,
+                payoutCents: payoutCents,
+              },
+            })
+          }
         }
       }
     }

@@ -4,6 +4,8 @@ export const exchangeQuoteSelectFields = [
   "quoted_distance_miles",
   "quoted_duration_minutes",
   "quoted_base_rate_cents",
+  "quoted_vehicle_base_cents",
+  "quoted_vehicle_type",
   "quoted_mileage_cents",
   "quoted_after_hours_cents",
   "quoted_weekend_cents",
@@ -34,7 +36,9 @@ export type ExchangeQuoteSnapshotLike = {
     isAfterHours: boolean
     isWeekend: boolean
     isHighRisk: boolean
+    vehicleType?: string
   }
+  vehicleType?: string
 }
 
 export function buildExchangeQuoteColumns(quote: ExchangeQuoteSnapshotLike, quotedAt = new Date().toISOString()) {
@@ -44,6 +48,8 @@ export function buildExchangeQuoteColumns(quote: ExchangeQuoteSnapshotLike, quot
     quoted_distance_miles: quote.miles,
     quoted_duration_minutes: quote.minutes,
     quoted_base_rate_cents: Math.round(quote.breakdown.baseRate * 100),
+    quoted_vehicle_base_cents: quote.breakdown.vehicleType ? Math.round(quote.breakdown.baseRate * 100) : undefined,
+    quoted_vehicle_type: quote.vehicleType ?? undefined,
     quoted_mileage_cents: Math.round(quote.breakdown.mileage * 100),
     quoted_after_hours_cents: Math.round(quote.breakdown.afterHours * 100),
     quoted_weekend_cents: Math.round(quote.breakdown.weekend * 100),
