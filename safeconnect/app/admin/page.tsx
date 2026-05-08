@@ -417,7 +417,7 @@ export default function AdminDashboard() {
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-xl font-bold text-safe-900 mb-4">Live Tracking Panel</h2>
             <p className="text-safe-600">Real-time courier tracking with map integration will be implemented here.</p>
-            {/* TODO: Implement Mapbox integration for live tracking */}
+            {/* TODO: Implement OpenStreetMap-backed live tracking tools here. */}
           </div>
         )}
 

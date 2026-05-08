@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { NextRequest, NextResponse } from "next/server"
+import { getServerAdminSupabase } from "@/lib/serverAdminSupabase"
 
 async function getAuth(req: NextRequest) {
   const cookieStore = await cookies()
@@ -19,11 +20,22 @@ async function getAuth(req: NextRequest) {
     }
   )
 
+  const authHeader = req.headers.get("authorization")
+  const bearerToken = authHeader?.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7).trim()
+    : null
+
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = bearerToken
+    ? await supabase.auth.getUser(bearerToken)
+    : await supabase.auth.getUser()
 
-  return { supabase, user }
+  const adminSupabase = getServerAdminSupabase()
+  return {
+    supabase: bearerToken && adminSupabase ? adminSupabase : supabase,
+    user,
+  }
 }
 
 export async function POST(req: NextRequest) {

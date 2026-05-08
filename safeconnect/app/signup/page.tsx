@@ -2,31 +2,83 @@
 
 export const dynamic = "force-dynamic"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { getCurrentUserWithRole, getDashboardPathForRole } from "@/lib/auth"
+import { syncSessionToServerCookies } from "@/lib/sessionSync"
+
+function getEmailRedirectTo() {
+  if (typeof window === "undefined") {
+    return undefined
+  }
+
+  return `${window.location.origin}/login`
+}
 
 export default function SignupPage() {
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    let mounted = true
+
+    const redirectIfSignedIn = async () => {
+      const { user, role } = await getCurrentUserWithRole()
+
+      if (!mounted || !user) {
+        return
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      await syncSessionToServerCookies(session)
+
+      router.replace(getDashboardPathForRole(role))
+    }
+
+    redirectIfSignedIn()
+
+    return () => {
+      mounted = false
+    }
+  }, [router])
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError("")
+    setSuccess("")
 
-    const { error } = await supabase.auth.signUp({ email, password })
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: getEmailRedirectTo(),
+      },
+    })
 
     if (error) {
       setError(error.message)
       setLoading(false)
-    } else {
-      router.push("/login")
+      return
     }
+
+    if (data.session) {
+      await syncSessionToServerCookies(data.session)
+      const { role } = await getCurrentUserWithRole()
+      router.replace(getDashboardPathForRole(role))
+      return
+    }
+
+    setSuccess("Account created. Check your email to confirm your account, then sign in.")
+    setLoading(false)
   }
 
   return (
@@ -35,6 +87,7 @@ export default function SignupPage() {
 
       <form onSubmit={handleSignup} className="bg-white shadow-md rounded-xl p-6 space-y-4">
         {error && <p className="text-red-600 text-sm">{error}</p>}
+        {success && <p className="text-emerald-700 text-sm">{success}</p>}
 
         <input
           type="email"

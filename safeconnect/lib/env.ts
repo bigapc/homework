@@ -18,7 +18,6 @@ const ENV_SPECS: EnvSpec[] = [
   { key: "TWILIO_ACCOUNT_SID", requiredIn: ["health"], secret: true },
   { key: "TWILIO_AUTH_TOKEN", requiredIn: ["health"], secret: true },
   { key: "TWILIO_FROM_NUMBER", requiredIn: ["health"], secret: false },
-  { key: "NEXT_PUBLIC_MAPBOX_TOKEN", requiredIn: ["health"], secret: false },
   { key: "NOTIFICATIONS_CRON_SECRET", requiredIn: ["health"], secret: true },
 ]
 
@@ -77,7 +76,6 @@ export function getHealthEnvSummary() {
       details.TWILIO_ACCOUNT_SID.configured &&
       details.TWILIO_AUTH_TOKEN.configured &&
       details.TWILIO_FROM_NUMBER.configured,
-    mapboxConfigured: details.NEXT_PUBLIC_MAPBOX_TOKEN.configured,
     notificationsCronConfigured: details.NOTIFICATIONS_CRON_SECRET.configured,
     missingStartupEnv: getMissingRequiredEnv("startup"),
     details,

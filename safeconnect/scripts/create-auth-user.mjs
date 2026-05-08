@@ -63,7 +63,7 @@ const email = process.argv[2]
 
 if (!email) {
   console.error("❌ Usage: node scripts/create-auth-user.mjs <email> [password]")
-  console.error("   Example: node scripts/create-auth-user.mjs bizz16295@gmail.com mypassword123")
+  console.error("   Example: node scripts/create-auth-user.mjs apjune3@gmail.com mypassword123")
   process.exit(1)
 }
 

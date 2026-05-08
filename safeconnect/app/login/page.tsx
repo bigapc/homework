@@ -2,10 +2,12 @@
 
 export const dynamic = "force-dynamic"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { getCurrentUserWithRole, getDashboardPathForRole } from "@/lib/auth"
+import { syncSessionToServerCookies } from "@/lib/sessionSync"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -14,18 +16,45 @@ export default function LoginPage() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
+  useEffect(() => {
+    let mounted = true
+
+    const redirectIfSignedIn = async () => {
+      const { user, role } = await getCurrentUserWithRole()
+
+      if (!mounted || !user) {
+        return
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      await syncSessionToServerCookies(session)
+
+      router.replace(getDashboardPathForRole(role))
+    }
+
+    redirectIfSignedIn()
+
+    return () => {
+      mounted = false
+    }
+  }, [router])
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError("")
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
       setError(error.message)
       setLoading(false)
     } else {
-      router.push("/dashboard")
+      await syncSessionToServerCookies(data.session)
+      const { role } = await getCurrentUserWithRole()
+      router.replace(getDashboardPathForRole(role))
     }
   }
 

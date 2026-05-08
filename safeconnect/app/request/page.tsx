@@ -45,11 +45,35 @@ export default function RequestCourier() {
   const [success, setSuccess] = useState("")
   const [error, setError] = useState("")
   const [quoteResult, setQuoteResult] = useState<PricingResult | null>(null)
+  const [addOnCharges, setAddOnCharges] = useState({
+    extraStop: false,
+    returnTrip: false,
+    rideshareEmergency: false,
+    uhaulSupplies: false,
+    moverSupplies: false,
+  })
   const [myRequests, setMyRequests] = useState<Exchange[]>([])
   const [latestTrackingByRequest, setLatestTrackingByRequest] = useState<Record<string, TrackingPoint>>({})
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null)
+
+  const addOnPricing = {
+    extraStop: 25,
+    returnTrip: 40,
+    rideshareEmergency: 45,
+    uhaulSupplies: 35,
+    moverSupplies: 65,
+  }
+
+  const additionalChargesTotal =
+    (addOnCharges.extraStop ? addOnPricing.extraStop : 0) +
+    (addOnCharges.returnTrip ? addOnPricing.returnTrip : 0) +
+    (addOnCharges.rideshareEmergency ? addOnPricing.rideshareEmergency : 0) +
+    (addOnCharges.uhaulSupplies ? addOnPricing.uhaulSupplies : 0) +
+    (addOnCharges.moverSupplies ? addOnPricing.moverSupplies : 0)
+
+  const adjustedEstimate = quoteResult ? quoteResult.total + additionalChargesTotal : null
 
   const loadMyRequests = useCallback(async () => {
     setListLoading(true)
@@ -224,6 +248,19 @@ export default function RequestCourier() {
           ...(quoteResult.breakdown.highRiskFee > 0
             ? [`High-risk handling: $${quoteResult.breakdown.highRiskFee.toFixed(2)}`]
             : []),
+          ...(addOnCharges.extraStop ? [`Added stop charge: $${addOnPricing.extraStop.toFixed(2)}`] : []),
+          ...(addOnCharges.returnTrip ? [`Return-trip handling: $${addOnPricing.returnTrip.toFixed(2)}`] : []),
+          ...(addOnCharges.rideshareEmergency
+            ? [`Emergency rideshare coordination: $${addOnPricing.rideshareEmergency.toFixed(2)}`]
+            : []),
+          ...(addOnCharges.uhaulSupplies ? [`U-Haul supplies package: $${addOnPricing.uhaulSupplies.toFixed(2)}`] : []),
+          ...(addOnCharges.moverSupplies ? [`Mover supplies package: $${addOnPricing.moverSupplies.toFixed(2)}`] : []),
+          ...(additionalChargesTotal > 0
+            ? [
+                `Additional charges total: $${additionalChargesTotal.toFixed(2)}`,
+                `Adjusted estimate: $${(quoteResult.total + additionalChargesTotal).toFixed(2)}`,
+              ]
+            : []),
           "",
         ]
       : []
@@ -351,6 +388,13 @@ export default function RequestCourier() {
       encryptionPasscode: "",
     })
     setQuoteResult(null)
+    setAddOnCharges({
+      extraStop: false,
+      returnTrip: false,
+      rideshareEmergency: false,
+      uhaulSupplies: false,
+      moverSupplies: false,
+    })
     await loadMyRequests()
     setLoading(false)
   }
@@ -425,6 +469,91 @@ export default function RequestCourier() {
 
         {error   && <div className="alert-error">{error}</div>}
         {success && <div className="alert-success">{success}</div>}
+
+        <div className="rounded-xl border border-safe-100 bg-safe-50 p-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-safe-900">Request Added Trip With Additional Charges</p>
+            <span className="text-xs text-safe-500">Visible before and after quote</span>
+          </div>
+
+          <div className="rounded-lg border border-warm-200 bg-warm-50/60 px-3 py-3 text-xs text-safe-700">
+            <p className="font-semibold text-safe-900">Large Property Exchange appointment</p>
+            <p className="mt-1">
+              Need a larger vehicle, extra couriers, supply quotes, and a scheduled appointment window?
+            </p>
+            <Link href="/property-exchange" className="mt-2 inline-flex font-semibold text-safe-900 underline hover:text-safe-700">
+              Open Large Property Exchange Scheduler
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+            <label className="flex items-center justify-between rounded-lg border border-safe-100 bg-white px-3 py-2 gap-3">
+              <span className="text-safe-700">Added stop</span>
+              <span className="flex items-center gap-2">
+                <span className="text-safe-500">+${addOnPricing.extraStop}</span>
+                <input
+                  type="checkbox"
+                  checked={addOnCharges.extraStop}
+                  onChange={(e) => setAddOnCharges((prev) => ({ ...prev, extraStop: e.target.checked }))}
+                />
+              </span>
+            </label>
+            <label className="flex items-center justify-between rounded-lg border border-safe-100 bg-white px-3 py-2 gap-3">
+              <span className="text-safe-700">Return trip</span>
+              <span className="flex items-center gap-2">
+                <span className="text-safe-500">+${addOnPricing.returnTrip}</span>
+                <input
+                  type="checkbox"
+                  checked={addOnCharges.returnTrip}
+                  onChange={(e) => setAddOnCharges((prev) => ({ ...prev, returnTrip: e.target.checked }))}
+                />
+              </span>
+            </label>
+            <label className="flex items-center justify-between rounded-lg border border-safe-100 bg-white px-3 py-2 gap-3">
+              <span className="text-safe-700">Rideshare emergency coordination</span>
+              <span className="flex items-center gap-2">
+                <span className="text-safe-500">+${addOnPricing.rideshareEmergency}</span>
+                <input
+                  type="checkbox"
+                  checked={addOnCharges.rideshareEmergency}
+                  onChange={(e) => setAddOnCharges((prev) => ({ ...prev, rideshareEmergency: e.target.checked }))}
+                />
+              </span>
+            </label>
+            <label className="flex items-center justify-between rounded-lg border border-safe-100 bg-white px-3 py-2 gap-3">
+              <span className="text-safe-700">U-Haul supplies package</span>
+              <span className="flex items-center gap-2">
+                <span className="text-safe-500">+${addOnPricing.uhaulSupplies}</span>
+                <input
+                  type="checkbox"
+                  checked={addOnCharges.uhaulSupplies}
+                  onChange={(e) => setAddOnCharges((prev) => ({ ...prev, uhaulSupplies: e.target.checked }))}
+                />
+              </span>
+            </label>
+            <label className="flex items-center justify-between rounded-lg border border-safe-100 bg-white px-3 py-2 gap-3">
+              <span className="text-safe-700">Mover supplies package</span>
+              <span className="flex items-center gap-2">
+                <span className="text-safe-500">+${addOnPricing.moverSupplies}</span>
+                <input
+                  type="checkbox"
+                  checked={addOnCharges.moverSupplies}
+                  onChange={(e) => setAddOnCharges((prev) => ({ ...prev, moverSupplies: e.target.checked }))}
+                />
+              </span>
+            </label>
+          </div>
+
+          <div className="flex flex-wrap gap-3 text-xs">
+            <span className="badge-active">
+              Base estimate: {quoteResult ? `$${quoteResult.total.toFixed(2)}` : "Generate quote above"}
+            </span>
+            <span className="badge-pending">Additional charges: ${additionalChargesTotal.toFixed(2)}</span>
+            <span className="badge-done">
+              Adjusted estimate: {quoteResult ? `$${(adjustedEstimate ?? quoteResult.total).toFixed(2)}` : "Generate quote above"}
+            </span>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>

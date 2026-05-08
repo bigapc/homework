@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { getServerRouteSupabase } from "@/lib/serverRouteSupabase"
+import { getServerAdminSupabase } from "@/lib/serverAdminSupabase"
 
 export const runtime = "nodejs"
 
@@ -9,32 +10,41 @@ type RotationCreateBody = {
   toVersion?: number
 }
 
-async function requireAdmin() {
+async function requireAdmin(request: Request) {
   const supabase = getServerRouteSupabase()
+  const adminSupabase = getServerAdminSupabase()
 
   if (!supabase) {
     return { supabase: null, userId: null, error: "Supabase route client unavailable.", status: 503 }
   }
 
+  const authHeader = request.headers.get("authorization")
+  const bearerToken = authHeader?.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7).trim()
+    : null
+
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = bearerToken
+    ? await supabase.auth.getUser(bearerToken)
+    : await supabase.auth.getUser()
 
   if (!user) {
     return { supabase, userId: null, error: "Unauthorized", status: 401 }
   }
 
-  const { data: roleRow } = await supabase.from("users").select("role").eq("id", user.id).single()
+  const roleClient = adminSupabase ?? supabase
+  const { data: roleRow } = await roleClient.from("users").select("role").eq("id", user.id).single()
 
   if (roleRow?.role !== "admin") {
     return { supabase, userId: user.id, error: "Admin access required.", status: 403 }
   }
 
-  return { supabase, userId: user.id, error: null as string | null, status: 200 }
+  return { supabase: adminSupabase ?? supabase, userId: user.id, error: null as string | null, status: 200 }
 }
 
-export async function GET() {
-  const auth = await requireAdmin()
+export async function GET(request: Request) {
+  const auth = await requireAdmin(request)
 
   if (auth.error || !auth.supabase) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
@@ -54,7 +64,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdmin()
+  const auth = await requireAdmin(request)
 
   if (auth.error || !auth.supabase || !auth.userId) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })

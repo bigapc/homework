@@ -1,5 +1,3 @@
-import Image from "next/image"
-
 type TrackingMapProps = {
   lat: number
   lng: number
@@ -7,10 +5,15 @@ type TrackingMapProps = {
   updatedAt: string
 }
 
-function buildMapboxStaticUrl(lat: number, lng: number, token: string) {
-  const marker = `pin-s+0f4c5c(${lng},${lat})`
-  const center = `${lng},${lat},13,0`
-  return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${marker}/${center}/800x360?access_token=${token}`
+function buildOpenStreetMapEmbedUrl(lat: number, lng: number) {
+  const lngDelta = 0.02
+  const latDelta = 0.01
+  const left = lng - lngDelta
+  const bottom = lat - latDelta
+  const right = lng + lngDelta
+  const top = lat + latDelta
+
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${left}%2C${bottom}%2C${right}%2C${top}&layer=mapnik&marker=${lat}%2C${lng}`
 }
 
 function buildOpenStreetMapUrl(lat: number, lng: number) {
@@ -18,7 +21,6 @@ function buildOpenStreetMapUrl(lat: number, lng: number) {
 }
 
 export default function TrackingMap({ lat, lng, status, updatedAt }: TrackingMapProps) {
-  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
   const safeLat = Number(lat.toFixed(5))
   const safeLng = Number(lng.toFixed(5))
   const lastUpdated = new Date(updatedAt).toLocaleString()
@@ -26,23 +28,15 @@ export default function TrackingMap({ lat, lng, status, updatedAt }: TrackingMap
 
   return (
     <div className="rounded-xl border border-safe-100 bg-white overflow-hidden">
-      {mapboxToken ? (
-        <Image
-          src={buildMapboxStaticUrl(safeLat, safeLng, mapboxToken)}
-          alt="Courier tracking map"
-          width={800}
-          height={360}
-          className="block h-52 w-full object-cover"
-          unoptimized
-        />
-      ) : (
-        <div className="h-52 w-full bg-safe-50 flex items-center justify-center px-6 text-center">
-          <div className="space-y-2">
-            <p className="text-sm font-semibold text-safe-800">Map preview available when Mapbox is configured</p>
-            <p className="text-xs text-safe-500">Set NEXT_PUBLIC_MAPBOX_TOKEN in Vercel or local env to enable the static map preview.</p>
-          </div>
-        </div>
-      )}
+      <iframe
+        title="Courier live tracking map"
+        src={buildOpenStreetMapEmbedUrl(safeLat, safeLng)}
+        width="800"
+        height="360"
+        className="block h-52 w-full border-0"
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+      />
 
       <div className="px-4 py-3 space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">

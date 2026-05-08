@@ -68,7 +68,7 @@ const email = process.argv[2]
 
 if (!email) {
   console.error("❌ Usage: node scripts/grant-admin.mjs <email>")
-  console.error("   Example: node scripts/grant-admin.mjs bizz16295@gmail.com")
+  console.error("   Example: node scripts/grant-admin.mjs apjune3@gmail.com")
   process.exit(1)
 }
 

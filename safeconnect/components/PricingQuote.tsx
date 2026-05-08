@@ -1,7 +1,13 @@
 "use client"
 
-import Image from "next/image"
 import { useCallback, useEffect, useRef, useState } from "react"
+import {
+  buildRouteDirectionsUrl,
+  buildRoutePreviewEmbedUrl,
+  fetchDrivingRoute,
+  searchAddressSuggestions,
+  type OpenStreetMapSuggestion,
+} from "@/lib/openStreetMap"
 
 // ─── Pricing constants ────────────────────────────────────────────
 const PER_MILE_RATE  = 2.50    // per road mile after base radius
@@ -76,11 +82,6 @@ function calcPricing(miles: number, requestedAt: Date, highRisk: boolean, vehicl
 }
 
 // ─── Types ────────────────────────────────────────────────────────
-type Suggestion = {
-  place_name: string
-  center: [number, number] // [lng, lat]
-}
-
 type SelectedLocation = {
   label: string
   lng: number
@@ -117,60 +118,22 @@ type Props = {
   onQuoteReady?: (result: PricingResult) => void
 }
 
-// ─── Mapbox helpers ───────────────────────────────────────────────
-async function geocode(query: string, token: string): Promise<Suggestion[]> {
-  if (!token || query.trim().length < 3) return []
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json` +
-    `?access_token=${token}&autocomplete=true&types=address,place&limit=5`
-  const res = await fetch(url)
-  if (!res.ok) return []
-  const json = await res.json()
-  return (json.features ?? []).map((f: { place_name: string; center: [number, number] }) => ({
-    place_name: f.place_name,
-    center: f.center,
-  }))
-}
-
-async function fetchRoute(pickup: SelectedLocation, dropoff: SelectedLocation, token: string) {
-  const url =
-    `https://api.mapbox.com/directions/v5/mapbox/driving/` +
-    `${pickup.lng},${pickup.lat};${dropoff.lng},${dropoff.lat}` +
-    `?access_token=${token}&overview=false`
-  const res = await fetch(url)
-  if (!res.ok) return null
-  const json = await res.json()
-  const route = json.routes?.[0]
-  if (!route) return null
-  return {
-    miles:   Math.round((route.distance / 1609.34) * 100) / 100,
-    minutes: Math.round(route.duration / 60),
-  }
-}
-
-function buildStaticRoutePreviewUrl(pickup: SelectedLocation, dropoff: SelectedLocation, token: string) {
-  const startPin = `pin-s-a+2f9e44(${pickup.lng},${pickup.lat})`
-  const endPin = `pin-s-b+ef4444(${dropoff.lng},${dropoff.lat})`
-  return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${startPin},${endPin}/auto/880x300?padding=60,40,60,40&access_token=${token}`
-}
-
 // ─── Address input w/ autocomplete ───────────────────────────────
 function AddressInput({
   label,
   placeholder,
   value,
   onSelect,
-  token,
   icon,
 }: {
   label: string
   placeholder: string
   value: string
   onSelect: (loc: SelectedLocation) => void
-  token: string
   icon: string
 }) {
   const [query, setQuery]           = useState(value)
-  const [suggestions, setSugg]      = useState<Suggestion[]>([])
+  const [suggestions, setSugg]      = useState<OpenStreetMapSuggestion[]>([])
   const [open, setOpen]             = useState(false)
   const [loading, setLoading]       = useState(false)
   const debounceRef                 = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -198,14 +161,14 @@ function AddressInput({
     if (val.trim().length < 3) return
     debounceRef.current = setTimeout(async () => {
       setLoading(true)
-      const results = await geocode(val, token)
+      const results = await searchAddressSuggestions(val)
       setSugg(results)
       setOpen(results.length > 0)
       setLoading(false)
     }, 350)
   }
 
-  function handleSelect(s: Suggestion) {
+  function handleSelect(s: OpenStreetMapSuggestion) {
     setQuery(s.place_name)
     setSugg([])
     setOpen(false)
@@ -258,7 +221,6 @@ function AddressInput({
 
 // ─── Main component ───────────────────────────────────────────────
 export default function PricingQuote({ onQuoteReady }: Props) {
-  const token   = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ""
   const [pickup, setPickup]   = useState<SelectedLocation | null>(null)
   const [dropoff, setDropoff] = useState<SelectedLocation | null>(null)
   const [pickupLabel, setPickupLabel]   = useState("")
@@ -272,11 +234,11 @@ export default function PricingQuote({ onQuoteReady }: Props) {
   const [routeError, setRouteError] = useState("")
 
   const getQuote = useCallback(async () => {
-    if (!pickup || !dropoff || !token) return
+    if (!pickup || !dropoff) return
     setFetching(true)
     setRouteError("")
     setQuote(null)
-    const route = await fetchRoute(pickup, dropoff, token)
+    const route = await fetchDrivingRoute(pickup, dropoff)
     if (!route) {
       setRouteError("Could not calculate a route between those addresses. Please try different locations.")
       setFetching(false)
@@ -284,7 +246,7 @@ export default function PricingQuote({ onQuoteReady }: Props) {
     }
     setQuote(route)
     setFetching(false)
-  }, [pickup, dropoff, token])
+  }, [pickup, dropoff])
 
   // auto-fetch when both locations are selected
   useEffect(() => {
@@ -361,7 +323,6 @@ export default function PricingQuote({ onQuoteReady }: Props) {
           placeholder="e.g. 123 Main St, Casper WY"
           value={pickupLabel}
           icon="🟢"
-          token={token}
           onSelect={(loc) => { setPickup(loc); setPickupLabel(loc.label) }}
         />
         <AddressInput
@@ -369,7 +330,6 @@ export default function PricingQuote({ onQuoteReady }: Props) {
           placeholder="e.g. 456 Park Ave, Casper WY"
           value={dropoffLabel}
           icon="🔴"
-          token={token}
           onSelect={(loc) => { setDropoff(loc); setDropoffLabel(loc.label) }}
         />
       </div>
@@ -465,15 +425,16 @@ export default function PricingQuote({ onQuoteReady }: Props) {
         <div className="animate-fade-in space-y-4">
 
           {/* Map preview */}
-          {pickup && dropoff && token && (
+          {pickup && dropoff && (
             <div className="overflow-hidden rounded-xl border border-safe-200 bg-white">
-              <Image
-                src={buildStaticRoutePreviewUrl(pickup, dropoff, token)}
-                alt="Pickup and dropoff route preview"
-                width={880}
-                height={300}
-                className="block h-48 w-full object-cover"
-                unoptimized
+              <iframe
+                title="Pickup and dropoff route preview"
+                src={buildRoutePreviewEmbedUrl(pickup, dropoff)}
+                width="880"
+                height="300"
+                className="block h-48 w-full border-0"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
               />
               <div className="grid grid-cols-1 gap-2 border-t border-safe-100 bg-safe-50 px-4 py-3 text-xs text-safe-600 sm:grid-cols-2">
                 <p className="truncate">
@@ -484,6 +445,14 @@ export default function PricingQuote({ onQuoteReady }: Props) {
                   <span className="mr-1 font-semibold text-safe-800">B:</span>
                   {dropoff.label}
                 </p>
+                <a
+                  href={buildRouteDirectionsUrl(pickup, dropoff)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex font-semibold text-safe-700 underline hover:text-safe-900 sm:col-span-2"
+                >
+                  Open full route in OpenStreetMap
+                </a>
               </div>
             </div>
           )}

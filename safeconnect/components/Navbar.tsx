@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import {
   BookOpen,
   Building2,
+  Boxes,
   CalendarDays,
   Calculator,
   HeartHandshake,
@@ -37,6 +38,7 @@ type NavItem = {
 const mainServices: NavItem[] = [
   { href: "/", label: "Home", icon: Home },
   { href: "/request", label: "Courier Services", icon: Truck },
+  { href: "/property-exchange", label: "Large Exchange", icon: Boxes },
   { href: "/safety-plan", label: "Safety Planning", icon: Shield, roles: ["survivor"] },
   { href: "/legal-aid", label: "Legal Aid", icon: Scale },
   { href: "/schedule", label: "Consultations", icon: CalendarDays },
@@ -57,6 +59,7 @@ const toolLinks: NavItem[] = [
 
 const adminLinks: NavItem[] = [
   { href: "/admin", label: "Admin", icon: Settings, roles: ["admin"] },
+  { href: "/admin/supervisor", label: "Supervisor", icon: ClipboardList, roles: ["admin"] },
   { href: "/dispatcher", label: "Dispatcher Base", icon: Truck, roles: ["admin"] },
   { href: "/admin/couriers", label: "Courier Review", icon: UserPlus, roles: ["admin"] },
   { href: "/admin/partnerships", label: "Partnerships", icon: Building2, roles: ["admin"] },

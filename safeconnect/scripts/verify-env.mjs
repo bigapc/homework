@@ -26,7 +26,6 @@ const optionalLocal = [
   "TWILIO_ACCOUNT_SID",
   "TWILIO_AUTH_TOKEN",
   "TWILIO_FROM_NUMBER",
-  "NEXT_PUBLIC_MAPBOX_TOKEN",
   "NOTIFICATIONS_CRON_SECRET",
   "NEXT_PUBLIC_APP_URL",
 ]
@@ -132,7 +131,6 @@ async function verifyProdHealth(baseUrl) {
   console.log(`- stripeConfigured: ${Boolean(env.stripeConfigured)}`)
   console.log(`- stripeWebhookConfigured: ${Boolean(env.stripeWebhookConfigured)}`)
   console.log(`- twilioConfigured: ${Boolean(env.twilioConfigured)}`)
-  console.log(`- mapboxConfigured: ${Boolean(env.mapboxConfigured)}`)
   console.log(`- notificationsCronConfigured: ${Boolean(env.notificationsCronConfigured)}`)
 
   if (Array.isArray(env.missingStartupEnv) && env.missingStartupEnv.length > 0) {

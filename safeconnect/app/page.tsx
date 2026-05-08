@@ -238,11 +238,26 @@ export default function Home() {
                   title: "Delivery Exchanges",
                   desc: "Confidential delivery and exchange services for business-to-business transactions and contracts.",
                 },
+                {
+                  icon: "🔄",
+                  title: "Property Exchange & Return",
+                  desc: "Need an extra stop or a return trip? Add stops to any commercial dispatch for a transparent additional fee. Full chain-of-custody at every location.",
+                },
+                {
+                  icon: "🚛",
+                  title: "Large Property Exchange",
+                  desc: "Schedule larger transports with bigger vehicles, extra couriers, and detailed supply quotes before booking.",
+                },
               ].map(({ icon, title, desc }) => (
                 <div key={title} className="bg-safe-800/50 border border-safe-700/50 rounded-2xl p-5 space-y-3 hover:bg-safe-800/70 transition-colors">
                   <div className="text-2xl">{icon}</div>
                   <h4 className="font-semibold text-white text-sm">{title}</h4>
                   <p className="text-xs text-safe-300 leading-relaxed">{desc}</p>
+                  {title === "Large Property Exchange" && (
+                    <Link href="/property-exchange" className="inline-flex text-xs font-semibold text-warm-300 underline hover:text-warm-200">
+                      Open scheduler
+                    </Link>
+                  )}
                 </div>
               ))}
             </div>
@@ -250,6 +265,9 @@ export default function Home() {
             <div className="flex flex-wrap gap-3 pt-2">
               <Link href="/request" className="btn-accent">
                 Request Commercial Service
+              </Link>
+              <Link href="/property-exchange" className="btn-secondary border-safe-600 text-white hover:bg-safe-800">
+                Schedule Large Exchange
               </Link>
               <Link href="#how-it-works" className="btn-ghost text-white hover:bg-safe-800">
                 Learn How It Works →
@@ -260,9 +278,88 @@ export default function Home() {
       </section>
 
       {/* ── CTA ──────────────────────────────────────────────────── */}
-      <section className="bg-warm-400">
+
+        {/* ── Rideshare & Emergency Transportation ─────────────────── */}
+        <section className="section-container">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl font-bold text-safe-900">Rideshare &amp; Emergency Transportation</h2>
+            <p className="text-safe-500 mt-2 max-w-2xl mx-auto">
+              We partner with trusted rideshare services to provide discounted rides — especially
+              for those navigating dangerous domestic situations.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {[
+              {
+                icon: "🚗",
+                title: "Discounted Rideshare",
+                desc: "Access discounted rides through our partnered rideshare services. Safe, affordable transportation available anytime.",
+                highlight: false,
+              },
+              {
+                icon: "🚨",
+                title: "Emergency Exit Rides",
+                desc: "Extreme-circumstance emergency rides for individuals trying to safely leave a domestic violence situation — 24/7, no questions asked.",
+                highlight: true,
+              },
+              {
+                icon: "📍",
+                title: "Discreet Pick-Up",
+                desc: "Request a pick-up from a safe, neutral location. Drivers follow sensitivity protocols to protect your privacy and safety.",
+                highlight: false,
+              },
+            ].map(({ icon, title, desc, highlight }) => (
+              <div
+                key={title}
+                className={`rounded-2xl border p-5 flex flex-col gap-3 shadow-card hover:shadow-card-lg transition-shadow ${highlight ? "bg-red-50 border-red-200" : "bg-white border-safe-100"}`}
+              >
+                <span className="text-2xl">{icon}</span>
+                <h4 className={`font-semibold text-sm ${highlight ? "text-red-800" : "text-safe-900"}`}>{title}</h4>
+                <p className={`text-xs leading-relaxed ${highlight ? "text-red-700" : "text-safe-500"}`}>{desc}</p>
+                {highlight && (
+                  <span className="inline-block bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded-full w-fit">
+                    Available 24/7
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 text-center">
+            <Link href="/request" className="btn-accent">
+              Request Emergency Ride
+            </Link>
+          </div>
+        </section>
+
+        {/* ── Preventative Property Exchange ───────────────────────── */}
+        <section className="bg-safe-50 border-y border-safe-100">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 flex flex-col sm:flex-row items-center gap-8">
+            <div className="text-5xl shrink-0">💑</div>
+            <div className="space-y-3 text-center sm:text-left">
+              <p className="text-warm-500 text-xs font-semibold uppercase tracking-widest">New — Couples &amp; Partners</p>
+              <h2 className="text-2xl font-extrabold text-safe-900">Preventative Property Exchange Services</h2>
+              <p className="text-safe-600 leading-relaxed">
+                Sometimes a relationship needs space, not conflict. Our{" "}
+                <strong>Preventative Property Exchange</strong> service is designed for couples who need
+                a safe, neutral way to exchange belongings <em>before</em> conflict escalates —
+                as a healthy alternative to confrontation or violence. Protect your peace. Use SafeConnect as the bridge.
+              </p>
+              <div className="flex flex-wrap justify-center sm:justify-start gap-3 pt-1">
+                <Link href="/request" className="btn-accent">
+                  Schedule a Preventative Exchange
+                </Link>
+                <Link href="/signup" className="btn-secondary">
+                  Learn More
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── CTA ──────────────────────────────────────────────────── */}
+        <section className="bg-warm-400">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-14 text-center space-y-6">
-          <h2 className="text-3xl font-extrabold text-safe-900">
+            <h2 className="text-3xl font-extrabold text-safe-900">
             You deserve to feel safe.
           </h2>
           <p className="text-safe-800 text-lg">

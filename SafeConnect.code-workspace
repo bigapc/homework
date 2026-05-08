@@ -1,0 +1,12 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "window.title": "SafeConnect",
+    "terminal.integrated.cwd": "${workspaceFolder}",
+    "git.openRepositoryInParentFolders": "never"
+  }
+}
