@@ -21,8 +21,11 @@ type ServiceProof = {
   id: string
   proof_type: ProofType
   signer_name: string | null
+  storage_path: string | null
   created_at: string
 }
+
+const PROOF_BUCKET = "safeconnect-private-documents"
 
 const REQUIRED_PROOFS: { type: ProofType; label: string }[] = [
   { type: "pickup_photo", label: "Pickup photo" },
@@ -33,6 +36,10 @@ const REQUIRED_PROOFS: { type: ProofType; label: string }[] = [
 
 function isSignatureProof(type: ProofType) {
   return type === "pickup_signature" || type === "dropoff_signature"
+}
+
+function isPhotoProof(type: ProofType) {
+  return type === "pickup_photo" || type === "dropoff_photo"
 }
 
 async function getCurrentCoords() {
@@ -57,6 +64,7 @@ export default function CourierAssignmentDetail({ assignment }: { assignment: As
   const [error, setError] = useState("")
   const [proofs, setProofs] = useState<ServiceProof[]>([])
   const [signerNames, setSignerNames] = useState<Record<string, string>>({})
+  const [selectedFiles, setSelectedFiles] = useState<Record<string, File | null>>({})
   const [savingProof, setSavingProof] = useState("")
 
   const proofMap = useMemo(() => {
@@ -71,7 +79,7 @@ export default function CourierAssignmentDetail({ assignment }: { assignment: As
   async function loadProofs() {
     const { data, error: proofError } = await supabase
       .from("exchange_service_proofs")
-      .select("id,proof_type,signer_name,created_at")
+      .select("id,proof_type,signer_name,storage_path,created_at")
       .eq("exchange_id", assignment.id)
       .order("created_at", { ascending: false })
 
@@ -86,6 +94,23 @@ export default function CourierAssignmentDetail({ assignment }: { assignment: As
   useEffect(() => {
     loadProofs()
   }, [assignment.id])
+
+  async function uploadProofFile(proofType: ProofType, file: File) {
+    const extension = file.name.split(".").pop()?.toLowerCase() || "jpg"
+    const cleanExtension = extension.replace(/[^a-z0-9]/g, "") || "jpg"
+    const storagePath = `exchange-proofs/${assignment.id}/${proofType}-${Date.now()}.${cleanExtension}`
+
+    const { error: uploadError } = await supabase.storage
+      .from(PROOF_BUCKET)
+      .upload(storagePath, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: file.type || "image/jpeg",
+      })
+
+    if (uploadError) throw uploadError
+    return storagePath
+  }
 
   async function saveProof(proofType: ProofType) {
     setSavingProof(proofType)
@@ -106,30 +131,46 @@ export default function CourierAssignmentDetail({ assignment }: { assignment: As
       return
     }
 
-    const coords = await getCurrentCoords()
-    const { error: insertError } = await supabase.from("exchange_service_proofs").insert({
-      exchange_id: assignment.id,
-      courier_id: authData.user.id,
-      proof_type: proofType,
-      signer_name: signerName,
-      signature_payload: isSignatureProof(proofType)
-        ? JSON.stringify({ method: "typed_signature", signerName, signedAt: new Date().toISOString() })
-        : null,
-      latitude: coords?.latitude ?? null,
-      longitude: coords?.longitude ?? null,
-      notes: `${proofType.replace(/_/g, " ")} confirmed by courier.`,
-    })
-
-    if (insertError) {
-      setError(insertError.message)
+    const file = selectedFiles[proofType]
+    if (isPhotoProof(proofType) && !file) {
+      setError("Choose or take a photo before saving this proof.")
       setSavingProof("")
       return
     }
 
-    setSignerNames((prev) => ({ ...prev, [proofType]: "" }))
-    setMessage(`${proofType.replace(/_/g, " ")} saved.`)
-    setSavingProof("")
-    await loadProofs()
+    try {
+      const coords = await getCurrentCoords()
+      const storagePath = file ? await uploadProofFile(proofType, file) : null
+
+      const { error: insertError } = await supabase.from("exchange_service_proofs").insert({
+        exchange_id: assignment.id,
+        courier_id: authData.user.id,
+        proof_type: proofType,
+        signer_name: signerName,
+        storage_bucket: storagePath ? PROOF_BUCKET : null,
+        storage_path: storagePath,
+        signature_payload: isSignatureProof(proofType)
+          ? JSON.stringify({ method: "typed_signature", signerName, signedAt: new Date().toISOString() })
+          : null,
+        latitude: coords?.latitude ?? null,
+        longitude: coords?.longitude ?? null,
+        notes: storagePath
+          ? `${proofType.replace(/_/g, " ")} photo uploaded by courier.`
+          : `${proofType.replace(/_/g, " ")} confirmed by courier.`,
+      })
+
+      if (insertError) throw insertError
+
+      setSignerNames((prev) => ({ ...prev, [proofType]: "" }))
+      setSelectedFiles((prev) => ({ ...prev, [proofType]: null }))
+      setMessage(`${proofType.replace(/_/g, " ")} saved.`)
+      await loadProofs()
+    } catch (proofError) {
+      const detail = proofError instanceof Error ? proofError.message : "Unable to save proof."
+      setError(detail)
+    } finally {
+      setSavingProof("")
+    }
   }
 
   async function runAction(action: CourierAction) {
@@ -200,13 +241,14 @@ export default function CourierAssignmentDetail({ assignment }: { assignment: As
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-amber-700">Proof of Service</p>
           <h2 className="text-xl font-semibold text-slate-900">Pickup and drop-off proof package</h2>
-          <p className="text-sm text-slate-700">Confirm all four proof records before marking the assignment delivered.</p>
+          <p className="text-sm text-slate-700">Upload photos and confirm signatures before marking the assignment delivered.</p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
           {REQUIRED_PROOFS.map((proof) => {
             const saved = proofMap[proof.type]
             const signature = isSignatureProof(proof.type)
+            const photo = isPhotoProof(proof.type)
             return (
               <div key={proof.type} className="rounded-2xl border border-white bg-white p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
@@ -215,6 +257,19 @@ export default function CourierAssignmentDetail({ assignment }: { assignment: As
                     {saved ? "Saved" : "Needed"}
                   </span>
                 </div>
+                {photo ? (
+                  <div className="mt-4 space-y-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      disabled={Boolean(saved) || savingProof !== ""}
+                      onChange={(event) => setSelectedFiles((prev) => ({ ...prev, [proof.type]: event.target.files?.[0] ?? null }))}
+                      className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-slate-900 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
+                    />
+                    {selectedFiles[proof.type] ? <p className="text-xs text-slate-500">Ready: {selectedFiles[proof.type]?.name}</p> : null}
+                  </div>
+                ) : null}
                 {signature ? (
                   <input
                     className="mt-4 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
