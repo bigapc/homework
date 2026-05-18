@@ -117,14 +117,7 @@ export default function CourierAssignmentDetail({ assignment }: { assignment: As
     setMessage("")
     setError("")
 
-    const { data: authData } = await supabase.auth.getUser()
-    if (!authData.user) {
-      setError("Please sign in again before saving proof.")
-      setSavingProof("")
-      return
-    }
-
-    const signerName = signerNames[proofType]?.trim() || null
+    const signerName = signerNames[proofType]?.trim() || ""
     if (isSignatureProof(proofType) && !signerName) {
       setError("Enter the signer name before saving this proof.")
       setSavingProof("")
@@ -142,24 +135,23 @@ export default function CourierAssignmentDetail({ assignment }: { assignment: As
       const coords = await getCurrentCoords()
       const storagePath = file ? await uploadProofFile(proofType, file) : null
 
-      const { error: insertError } = await supabase.from("exchange_service_proofs").insert({
-        exchange_id: assignment.id,
-        courier_id: authData.user.id,
-        proof_type: proofType,
-        signer_name: signerName,
-        storage_bucket: storagePath ? PROOF_BUCKET : null,
-        storage_path: storagePath,
-        signature_payload: isSignatureProof(proofType)
-          ? JSON.stringify({ method: "typed_signature", signerName, signedAt: new Date().toISOString() })
-          : null,
-        latitude: coords?.latitude ?? null,
-        longitude: coords?.longitude ?? null,
-        notes: storagePath
-          ? `${proofType.replace(/_/g, " ")} photo uploaded by courier.`
-          : `${proofType.replace(/_/g, " ")} confirmed by courier.`,
+      const response = await fetch(`/api/courier/assignments/${assignment.id}/proofs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          proofType,
+          signerName,
+          storageBucket: storagePath ? PROOF_BUCKET : null,
+          storagePath,
+          latitude: coords?.latitude ?? null,
+          longitude: coords?.longitude ?? null,
+        }),
       })
 
-      if (insertError) throw insertError
+      const payload = (await response.json().catch(() => ({}))) as { error?: string }
+      if (!response.ok) {
+        throw new Error(payload.error || "Unable to save proof.")
+      }
 
       setSignerNames((prev) => ({ ...prev, [proofType]: "" }))
       setSelectedFiles((prev) => ({ ...prev, [proofType]: null }))
