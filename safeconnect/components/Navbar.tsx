@@ -63,6 +63,7 @@ const adminLinks: NavItem[] = [
   { href: "/admin", label: "Admin", icon: Settings, roles: ["admin"] },
   { href: "/admin/supervisor", label: "Supervisor", icon: ClipboardList, roles: ["admin"] },
   { href: "/dispatcher", label: "Dispatcher Base", icon: Truck, roles: ["admin"] },
+  { href: "/admin/proofs", label: "Proof Viewer", icon: FileText, roles: ["admin"] },
   { href: "/admin/couriers", label: "Courier Review", icon: UserPlus, roles: ["admin"] },
   { href: "/admin/partnerships", label: "Partnerships", icon: Building2, roles: ["admin"] },
   { href: "/admin/review", label: "Review", icon: ClipboardList, roles: ["admin"] },
