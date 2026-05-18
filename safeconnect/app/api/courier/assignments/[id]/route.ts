@@ -13,6 +13,13 @@ const ACTION_TO_STATUS: Record<CourierAction, string> = {
   delivered: "completed",
 }
 
+const REQUIRED_COMPLETION_PROOFS = [
+  "pickup_photo",
+  "pickup_signature",
+  "dropoff_photo",
+  "dropoff_signature",
+]
+
 async function requireCourier() {
   const supabase = getServerRouteSupabase()
 
@@ -65,13 +72,43 @@ export async function POST(
 
   const { data: exchange, error: exchangeError } = await auth.supabase
     .from("exchanges")
-    .select("id,courier_id,status,pickup,dropoff")
+    .select("id,courier_id,status,pickup,dropoff,payment_status,payment_required")
     .eq("id", exchangeId)
     .eq("courier_id", auth.userId)
     .single()
 
   if (exchangeError || !exchange) {
     return NextResponse.json({ error: "Assignment not found for this courier." }, { status: 404 })
+  }
+
+  if ((body.action === "accept" || body.action === "picked_up" || body.action === "start_tracking" || body.action === "delivered") && exchange.payment_required && exchange.payment_status !== "paid") {
+    return NextResponse.json(
+      { error: "Client payment must be confirmed before courier workflow can continue." },
+      { status: 409 }
+    )
+  }
+
+  if (body.action === "delivered") {
+    const { data: proofRows, error: proofError } = await auth.supabase
+      .from("exchange_service_proofs")
+      .select("proof_type")
+      .eq("exchange_id", exchangeId)
+      .eq("courier_id", auth.userId)
+      .in("proof_type", REQUIRED_COMPLETION_PROOFS)
+
+    if (proofError) {
+      return NextResponse.json({ error: proofError.message }, { status: 500 })
+    }
+
+    const completedTypes = new Set((proofRows ?? []).map((row) => row.proof_type))
+    const missingProofs = REQUIRED_COMPLETION_PROOFS.filter((proofType) => !completedTypes.has(proofType))
+
+    if (missingProofs.length > 0) {
+      return NextResponse.json(
+        { error: `Proof package incomplete. Missing: ${missingProofs.join(", ")}.` },
+        { status: 409 }
+      )
+    }
   }
 
   const nextStatus = ACTION_TO_STATUS[body.action]
