@@ -52,6 +52,8 @@ const toolLinks: NavItem[] = [
   { href: "/courier/tracking", label: "Live Tracking", icon: Phone, roles: ["courier"] },
   { href: "/courier/profile", label: "Profile", icon: UserPlus, roles: ["courier"] },
   { href: "/courier/onboard", label: "Courier Onboarding", icon: UserPlus },
+  { href: "/notifications", label: "Notifications", icon: Phone, roles: ["survivor"] },
+  { href: "/journal-center", label: "Safety Box", icon: FileText, roles: ["survivor"] },
   { href: "/incident-log", label: "Incident Log", icon: ClipboardList, roles: ["survivor"] },
   { href: "/legal-docs", label: "Secure Files", icon: FileText, roles: ["survivor"] },
   { href: "/payments", label: "Invoices & Payments", icon: CreditCard, roles: ["survivor"] },
