@@ -1,22 +1,30 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { getCurrentUserWithRole, type UserRole } from "@/lib/auth"
 
+type AllowedRole = Exclude<UserRole, null>
+
 type ProtectedRouteProps = {
   children: React.ReactNode
-  requiredRole?: Exclude<UserRole, null>
+  requiredRole?: AllowedRole
+  requiredRoles?: AllowedRole[]
   loadingLabel?: string
 }
 
 export default function ProtectedRoute({
   children,
   requiredRole,
+  requiredRoles,
   loadingLabel = "Checking access…",
 }: ProtectedRouteProps) {
   const router = useRouter()
   const [ready, setReady] = useState(false)
+  const allowedRoles = useMemo(() => {
+    if (requiredRoles?.length) return requiredRoles
+    return requiredRole ? [requiredRole] : []
+  }, [requiredRole, requiredRoles])
 
   useEffect(() => {
     let mounted = true
@@ -33,10 +41,10 @@ export default function ProtectedRoute({
         return
       }
 
-      if (requiredRole && role !== requiredRole) {
+      if (allowedRoles.length > 0 && (!role || !allowedRoles.includes(role))) {
         const params = new URLSearchParams({
           from: window.location.pathname,
-          required: requiredRole,
+          required: allowedRoles.join(","),
         })
         router.replace(`/access-denied?${params.toString()}`)
         return
@@ -50,7 +58,7 @@ export default function ProtectedRoute({
     return () => {
       mounted = false
     }
-  }, [requiredRole, router])
+  }, [allowedRoles, router])
 
   if (!ready) {
     return (
