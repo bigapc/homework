@@ -10,11 +10,13 @@ import { getClientEncryptionKeyVersion } from "@/lib/encryptionVersion"
 import PricingQuote, { type PricingResult, VEHICLE_TYPES } from "@/components/PricingQuote"
 import { buildExchangeQuoteColumns, isMissingExchangeQuoteColumnsError } from "@/lib/exchangeQuote"
 
+type ExchangeStatus = "pending" | "assigned" | "picked_up" | "in_transit" | "completed" | "canceled"
+
 type Exchange = {
   id: string
   pickup: string
   dropoff: string
-  status: "pending" | "assigned" | "completed"
+  status: ExchangeStatus
   created_at: string
   quoted_total_cents?: number | null
   quoted_distance_miles?: number | null
@@ -399,11 +401,17 @@ export default function RequestCourier() {
     setLoading(false)
   }
 
-  const statusConfig: Record<Exchange["status"], { label: string; cls: string }> = {
-    pending:   { label: "Pending",   cls: "badge-pending" },
-    assigned:  { label: "Assigned",  cls: "badge-active"  },
-    completed: { label: "Completed", cls: "badge-done"    },
+  const statusConfig: Record<ExchangeStatus, { label: string; cls: string }> = {
+    pending: { label: "Pending", cls: "badge-pending" },
+    assigned: { label: "Assigned", cls: "badge-active" },
+    picked_up: { label: "Picked Up", cls: "badge-active" },
+    in_transit: { label: "In Transit", cls: "badge-active" },
+    completed: { label: "Completed", cls: "badge-done" },
+    canceled: { label: "Canceled", cls: "badge-offline" },
   }
+
+  const getStatusConfig = (status: string) =>
+    statusConfig[status as ExchangeStatus] ?? { label: status.replace(/_/g, " "), cls: "badge-pending" }
 
   return (
     <div className="page-container space-y-8 animate-fade-in">
@@ -675,7 +683,7 @@ export default function RequestCourier() {
         ) : (
           <div className="space-y-3">
             {myRequests.map((request) => {
-              const cfg = statusConfig[request.status]
+              const cfg = getStatusConfig(request.status)
               const tracking = latestTrackingByRequest[request.id]
               return (
                 <div key={request.id} className="border border-safe-100 rounded-xl p-4 bg-safe-50/50 space-y-2">
