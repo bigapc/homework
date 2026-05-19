@@ -75,6 +75,7 @@ export default function CourierAssignmentDetail({ assignment }: { assignment: As
   }, [proofs])
 
   const proofComplete = REQUIRED_PROOFS.every((proof) => Boolean(proofMap[proof.type]))
+  const isCompleted = currentStatus === "completed"
 
   async function loadProofs() {
     const { data, error: proofError } = await supabase
@@ -113,6 +114,11 @@ export default function CourierAssignmentDetail({ assignment }: { assignment: As
   }
 
   async function saveProof(proofType: ProofType) {
+    if (isCompleted) {
+      setError("This delivery is already completed. Proof records are locked.")
+      return
+    }
+
     setSavingProof(proofType)
     setMessage("")
     setError("")
@@ -171,6 +177,11 @@ export default function CourierAssignmentDetail({ assignment }: { assignment: As
   }
 
   async function runAction(action: CourierAction) {
+    if (isCompleted) {
+      setError("This delivery is already completed. Workflow actions are locked.")
+      return
+    }
+
     if (action === "delivered" && !proofComplete) {
       setError("All proof records are required before delivery can be completed.")
       return
@@ -220,6 +231,30 @@ export default function CourierAssignmentDetail({ assignment }: { assignment: As
       {error ? <div className="alert-error">{error}</div> : null}
       {message ? <div className="alert-success">{message}</div> : null}
 
+      {isCompleted ? (
+        <div className="rounded-3xl border border-green-200 bg-green-50 p-6 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-widest text-green-700">Delivery Completed</p>
+          <h2 className="mt-1 text-2xl font-bold text-green-950">This assignment is closed and locked.</h2>
+          <p className="mt-2 text-sm text-green-800">
+            The proof package and delivery record have been completed. No further courier workflow actions are needed for this request.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl bg-white/80 p-4">
+              <p className="text-xs text-green-700">Status</p>
+              <p className="font-bold capitalize text-green-950">{currentStatus.replace(/_/g, " ")}</p>
+            </div>
+            <div className="rounded-2xl bg-white/80 p-4">
+              <p className="text-xs text-green-700">Proof package</p>
+              <p className="font-bold text-green-950">{proofComplete ? "Complete" : "Review needed"}</p>
+            </div>
+            <div className="rounded-2xl bg-white/80 p-4">
+              <p className="text-xs text-green-700">Next step</p>
+              <p className="font-bold text-green-950">Return to assignments</p>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -234,11 +269,13 @@ export default function CourierAssignmentDetail({ assignment }: { assignment: As
         {assignment.items ? <div><p className="text-xs uppercase tracking-wider text-slate-500">Items</p><p className="text-slate-700 whitespace-pre-wrap">{assignment.items}</p></div> : null}
       </div>
 
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 space-y-4">
+      <div className={`rounded-2xl border p-6 space-y-4 ${isCompleted ? "border-green-200 bg-green-50" : "border-amber-200 bg-amber-50"}`}>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-amber-700">Proof of Service</p>
+          <p className={`text-xs font-semibold uppercase tracking-widest ${isCompleted ? "text-green-700" : "text-amber-700"}`}>Proof of Service</p>
           <h2 className="text-xl font-semibold text-slate-900">Pickup and drop-off proof package</h2>
-          <p className="text-sm text-slate-700">Upload photos and confirm signatures before marking the assignment delivered.</p>
+          <p className="text-sm text-slate-700">
+            {isCompleted ? "Proof records are locked after completion." : "Upload photos and confirm signatures before marking the assignment delivered."}
+          </p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -246,6 +283,7 @@ export default function CourierAssignmentDetail({ assignment }: { assignment: As
             const saved = proofMap[proof.type]
             const signature = isSignatureProof(proof.type)
             const photo = isPhotoProof(proof.type)
+            const inputDisabled = Boolean(saved) || savingProof !== "" || isCompleted
             return (
               <div key={proof.type} className="rounded-2xl border border-white bg-white p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
@@ -260,29 +298,32 @@ export default function CourierAssignmentDetail({ assignment }: { assignment: As
                       type="file"
                       accept="image/*"
                       capture="environment"
-                      disabled={Boolean(saved) || savingProof !== ""}
+                      disabled={inputDisabled}
                       onChange={(event) => setSelectedFiles((prev) => ({ ...prev, [proof.type]: event.target.files?.[0] ?? null }))}
-                      className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-slate-900 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
+                      className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-slate-900 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white disabled:opacity-50"
                     />
                     {selectedFiles[proof.type] ? <p className="text-xs text-slate-500">Ready: {selectedFiles[proof.type]?.name}</p> : null}
                   </div>
                 ) : null}
                 {signature ? (
                   <input
-                    className="mt-4 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                    className="mt-4 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:bg-slate-50 disabled:opacity-70"
                     placeholder="Signer full name"
+                    disabled={inputDisabled}
                     value={signerNames[proof.type] ?? ""}
                     onChange={(event) => setSignerNames((prev) => ({ ...prev, [proof.type]: event.target.value }))}
                   />
                 ) : null}
-                <button
-                  type="button"
-                  onClick={() => saveProof(proof.type)}
-                  disabled={savingProof !== "" || Boolean(saved)}
-                  className="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                >
-                  {savingProof === proof.type ? "Saving..." : saved ? "Saved" : `Save ${proof.label}`}
-                </button>
+                {!isCompleted ? (
+                  <button
+                    type="button"
+                    onClick={() => saveProof(proof.type)}
+                    disabled={savingProof !== "" || Boolean(saved)}
+                    className="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                  >
+                    {savingProof === proof.type ? "Saving..." : saved ? "Saved" : `Save ${proof.label}`}
+                  </button>
+                ) : null}
                 {saved ? <p className="mt-3 text-xs text-slate-500">Saved {new Date(saved.created_at).toLocaleString()}{saved.signer_name ? ` by ${saved.signer_name}` : ""}</p> : null}
               </div>
             )
@@ -290,20 +331,32 @@ export default function CourierAssignmentDetail({ assignment }: { assignment: As
         </div>
 
         <div className={`rounded-2xl px-4 py-3 text-sm ${proofComplete ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}`}>
-          {proofComplete ? "Proof package complete. Delivery may be marked delivered." : "Proof package incomplete. Complete all four proof records before marking delivered."}
+          {proofComplete ? (isCompleted ? "Proof package complete and locked." : "Proof package complete. Delivery may be marked delivered.") : "Proof package incomplete. Complete all four proof records before marking delivered."}
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4">
-        <h2 className="text-xl font-semibold text-slate-900">Workflow Actions</h2>
-        <div className="flex flex-wrap gap-3">
-          <button type="button" onClick={() => runAction("accept")} disabled={loadingAction !== ""} className="rounded-xl bg-slate-900 px-4 py-2 text-white disabled:opacity-50">{loadingAction === "accept" ? "Saving..." : "Accept Assignment"}</button>
-          <button type="button" onClick={() => runAction("picked_up")} disabled={loadingAction !== ""} className="rounded-xl bg-blue-600 px-4 py-2 text-white disabled:opacity-50">{loadingAction === "picked_up" ? "Saving..." : "Mark Picked Up"}</button>
-          <button type="button" onClick={() => runAction("start_tracking")} disabled={loadingAction !== ""} className="rounded-xl bg-indigo-600 px-4 py-2 text-white disabled:opacity-50">{loadingAction === "start_tracking" ? "Saving..." : "Start Tracking"}</button>
-          <button type="button" onClick={() => runAction("delivered")} disabled={loadingAction !== "" || !proofComplete} className="rounded-xl bg-green-600 px-4 py-2 text-white disabled:opacity-50">{loadingAction === "delivered" ? "Saving..." : "Mark Delivered"}</button>
+      {isCompleted ? (
+        <div className="rounded-2xl border border-green-200 bg-white p-6">
+          <h2 className="text-xl font-semibold text-green-950">Workflow Complete</h2>
+          <p className="mt-2 text-sm text-green-800">
+            This assignment is closed. Workflow buttons are disabled to prevent duplicate pickup, tracking, or delivery events.
+          </p>
+          <Link href="/courier/assignments" className="mt-4 inline-flex rounded-xl bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800">
+            Return to Assignments
+          </Link>
         </div>
-        <p className="text-sm text-slate-600">Start Tracking captures your current GPS point. Delivery completion requires payment and the proof package.</p>
-      </div>
+      ) : (
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4">
+          <h2 className="text-xl font-semibold text-slate-900">Workflow Actions</h2>
+          <div className="flex flex-wrap gap-3">
+            <button type="button" onClick={() => runAction("accept")} disabled={loadingAction !== ""} className="rounded-xl bg-slate-900 px-4 py-2 text-white disabled:opacity-50">{loadingAction === "accept" ? "Saving..." : "Accept Assignment"}</button>
+            <button type="button" onClick={() => runAction("picked_up")} disabled={loadingAction !== ""} className="rounded-xl bg-blue-600 px-4 py-2 text-white disabled:opacity-50">{loadingAction === "picked_up" ? "Saving..." : "Mark Picked Up"}</button>
+            <button type="button" onClick={() => runAction("start_tracking")} disabled={loadingAction !== ""} className="rounded-xl bg-indigo-600 px-4 py-2 text-white disabled:opacity-50">{loadingAction === "start_tracking" ? "Saving..." : "Start Tracking"}</button>
+            <button type="button" onClick={() => runAction("delivered")} disabled={loadingAction !== "" || !proofComplete} className="rounded-xl bg-green-600 px-4 py-2 text-white disabled:opacity-50">{loadingAction === "delivered" ? "Saving..." : "Mark Delivered"}</button>
+          </div>
+          <p className="text-sm text-slate-600">Start Tracking captures your current GPS point. Delivery completion requires payment and the proof package.</p>
+        </div>
+      )}
     </div>
   )
 }
