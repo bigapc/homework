@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { createClient } from "@supabase/supabase-js"
 import { getServerRouteSupabase } from "@/lib/serverRouteSupabase"
 
 type ProofType = "pickup_photo" | "pickup_signature" | "dropoff_photo" | "dropoff_signature"
@@ -18,8 +19,34 @@ function isSignatureProof(value: ProofType) {
   return value === "pickup_signature" || value === "dropoff_signature"
 }
 
-async function requireCourier() {
-  const supabase = getServerRouteSupabase()
+function getProofSupabase(request: Request) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const authorization = request.headers.get("authorization")
+
+  if (!url || !anonKey) {
+    return null
+  }
+
+  if (authorization?.toLowerCase().startsWith("bearer ")) {
+    return createClient(url, anonKey, {
+      global: {
+        headers: {
+          Authorization: authorization,
+        },
+      },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    })
+  }
+
+  return getServerRouteSupabase()
+}
+
+async function requireCourier(request: Request) {
+  const supabase = getProofSupabase(request)
 
   if (!supabase) {
     return { supabase: null, userId: null, error: "Supabase route client unavailable.", status: 503 }
@@ -46,7 +73,7 @@ export async function POST(
   request: Request,
   context: { params: { id: string } }
 ) {
-  const auth = await requireCourier()
+  const auth = await requireCourier(request)
 
   if (auth.error || !auth.supabase || !auth.userId) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
