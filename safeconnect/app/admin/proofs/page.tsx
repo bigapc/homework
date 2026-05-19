@@ -49,9 +49,14 @@ function money(value: number | null) {
   return `$${Number(value ?? 0).toFixed(2)}`
 }
 
+function isPhotoProof(proofType: string) {
+  return proofType === "pickup_photo" || proofType === "dropoff_photo"
+}
+
 function AdminProofViewerContent() {
   const [requests, setRequests] = useState<OperationRow[]>([])
   const [proofs, setProofs] = useState<ProofRecord[]>([])
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({})
   const [selectedId, setSelectedId] = useState("")
   const [loading, setLoading] = useState(true)
   const [proofLoading, setProofLoading] = useState(false)
@@ -83,6 +88,8 @@ function AdminProofViewerContent() {
   const loadProofs = useCallback(async (exchangeId: string) => {
     setProofLoading(true)
     setError("")
+    setSignedUrls({})
+
     const { data, error: proofError } = await supabase
       .from("exchange_service_proofs")
       .select("id,exchange_id,proof_type,signer_name,storage_bucket,storage_path,latitude,longitude,notes,created_at")
@@ -95,7 +102,26 @@ function AdminProofViewerContent() {
       return
     }
 
-    setProofs((data ?? []) as ProofRecord[])
+    const rows = (data ?? []) as ProofRecord[]
+    setProofs(rows)
+
+    const urlPairs = await Promise.all(
+      rows
+        .filter((proof) => isPhotoProof(proof.proof_type) && proof.storage_bucket && proof.storage_path)
+        .map(async (proof) => {
+          const { data: signedData, error: signedError } = await supabase.storage
+            .from(proof.storage_bucket as string)
+            .createSignedUrl(proof.storage_path as string, 60 * 10)
+
+          if (signedError || !signedData?.signedUrl) {
+            return null
+          }
+
+          return [proof.id, signedData.signedUrl] as const
+        })
+    )
+
+    setSignedUrls(Object.fromEntries(urlPairs.filter(Boolean) as [string, string][]))
     setProofLoading(false)
   }, [])
 
@@ -108,6 +134,7 @@ function AdminProofViewerContent() {
       loadProofs(selected.id)
     } else {
       setProofs([])
+      setSignedUrls({})
     }
   }, [selected?.id, loadProofs])
 
@@ -117,7 +144,7 @@ function AdminProofViewerContent() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-safe-500">Admin Console</p>
           <h1 className="text-3xl font-bold text-safe-900">Proof Viewer</h1>
-          <p className="text-sm text-safe-500 mt-1">Review payment, courier, GPS, signatures, and proof records for completed or active requests.</p>
+          <p className="text-sm text-safe-500 mt-1">Review payment, courier, GPS, signatures, proof records, and secure photo previews.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/dispatcher" className="btn-secondary text-sm px-4 py-2">Dispatcher</Link>
@@ -196,8 +223,14 @@ function AdminProofViewerContent() {
 
               <div className="card space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="text-lg font-bold text-safe-900">Proof Records</h2>
-                  <Link href={`/track/${selected.id}`} className="btn-secondary text-xs px-3 py-2">Open Tracking Page</Link>
+                  <div>
+                    <h2 className="text-lg font-bold text-safe-900">Proof Records</h2>
+                    <p className="text-xs text-safe-500">Private photo previews expire after a short signed access window.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={() => loadProofs(selected.id)} className="btn-secondary text-xs px-3 py-2">Refresh Proofs</button>
+                    <Link href={`/track/${selected.id}`} className="btn-secondary text-xs px-3 py-2">Open Tracking Page</Link>
+                  </div>
                 </div>
                 {proofLoading ? (
                   <p className="text-sm text-safe-500">Loading proof records...</p>
@@ -214,9 +247,30 @@ function AdminProofViewerContent() {
                           </div>
                           <span className="badge-done">Saved</span>
                         </div>
+
+                        {signedUrls[proof.id] ? (
+                          <a
+                            href={signedUrls[proof.id]}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-3 block overflow-hidden rounded-2xl border border-safe-100 bg-white shadow-sm"
+                          >
+                            <img
+                              src={signedUrls[proof.id]}
+                              alt={`${proof.proof_type.replace(/_/g, " ")} proof preview`}
+                              className="h-52 w-full object-cover"
+                            />
+                            <span className="block px-3 py-2 text-xs font-semibold text-safe-700">Open full secure image</span>
+                          </a>
+                        ) : isPhotoProof(proof.proof_type) && proof.storage_path ? (
+                          <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                            Photo saved. Preview unavailable until signed access refreshes.
+                          </div>
+                        ) : null}
+
                         <div className="mt-3 space-y-1 text-xs text-safe-600">
                           {proof.signer_name ? <p><span className="font-semibold text-safe-800">Signer:</span> {proof.signer_name}</p> : null}
-                          {proof.storage_path ? <p><span className="font-semibold text-safe-800">File:</span> {proof.storage_path}</p> : null}
+                          {proof.storage_path ? <p className="break-all"><span className="font-semibold text-safe-800">File:</span> {proof.storage_path}</p> : null}
                           {proof.latitude != null && proof.longitude != null ? <p><span className="font-semibold text-safe-800">GPS:</span> {proof.latitude}, {proof.longitude}</p> : null}
                           {proof.notes ? <p><span className="font-semibold text-safe-800">Notes:</span> {proof.notes}</p> : null}
                         </div>
