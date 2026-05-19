@@ -134,10 +134,15 @@ export default function CourierAssignmentDetail({ assignment }: { assignment: As
     try {
       const coords = await getCurrentCoords()
       const storagePath = file ? await uploadProofFile(proofType, file) : null
+      const { data: sessionData } = await supabase.auth.getSession()
+      const accessToken = sessionData.session?.access_token
 
       const response = await fetch(`/api/courier/assignments/${assignment.id}/proofs`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
         body: JSON.stringify({
           proofType,
           signerName,
