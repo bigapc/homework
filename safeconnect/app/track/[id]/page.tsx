@@ -212,7 +212,7 @@ function LiveTrackingPageContent() {
 
 export default function LiveTrackingPage() {
   return (
-    <ProtectedRoute requiredRoles={["survivor", "admin", "courier"]} loadingLabel="Checking tracking access…">
+    <ProtectedRoute loadingLabel="Checking tracking access…">
       <LiveTrackingPageContent />
     </ProtectedRoute>
   )
