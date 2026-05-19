@@ -7,11 +7,13 @@ import ProtectedRoute from "@/components/ProtectedRoute"
 import TrackingMap from "@/components/TrackingMap"
 import { supabase } from "@/lib/supabase"
 
+type ExchangeStatus = "pending" | "assigned" | "picked_up" | "in_transit" | "completed" | "canceled"
+
 type Exchange = {
   id: string
   pickup: string
   dropoff: string
-  status: "pending" | "assigned" | "completed"
+  status: ExchangeStatus
   created_at: string
 }
 
@@ -24,15 +26,10 @@ type TrackingPoint = {
   updated_at: string
 }
 
-function statusClasses(status: Exchange["status"]) {
-  if (status === "pending") {
-    return "badge-pending"
-  }
-
-  if (status === "assigned") {
-    return "badge-active"
-  }
-
+function statusClasses(status: string) {
+  if (status === "pending") return "badge-pending"
+  if (["assigned", "picked_up", "in_transit"].includes(status)) return "badge-active"
+  if (status === "canceled") return "badge-offline"
   return "badge-done"
 }
 
@@ -157,7 +154,7 @@ function LiveTrackingPageContent() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          {exchange && <span className={statusClasses(exchange.status)}>{exchange.status}</span>}
+          {exchange && <span className={statusClasses(exchange.status)}>{exchange.status.replace(/_/g, " ")}</span>}
           <Link href="/request" className="btn-secondary text-sm px-4 py-2">
             Back to Requests
           </Link>
@@ -215,7 +212,7 @@ function LiveTrackingPageContent() {
 
 export default function LiveTrackingPage() {
   return (
-    <ProtectedRoute requiredRole="survivor" loadingLabel="Checking tracking access…">
+    <ProtectedRoute requiredRoles={["survivor", "admin", "courier"]} loadingLabel="Checking tracking access…">
       <LiveTrackingPageContent />
     </ProtectedRoute>
   )
